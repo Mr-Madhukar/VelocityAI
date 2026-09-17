@@ -100,7 +100,7 @@ export function ProductDemo() {
 
             <span className="ml-auto mb-2.5 hidden items-center gap-1.5 self-center font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 md:flex">
               <span className="size-1 animate-pulse rounded-full bg-success" />
-              live demo
+              <span>live demo</span>
             </span>
           </div>
 

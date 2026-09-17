@@ -10,7 +10,11 @@ const metrics = [
   { value: 24, decimals: 0, suffix: "", label: "Blockers found", detail: "issues caught before approval" },
 ];
 
-function CountUp({ value, decimals, suffix }: { value: number; decimals: number; suffix: string }) {
+function CountUp({
+  value,
+  decimals,
+  suffix,
+}: Readonly<{ value: number; decimals: number; suffix: string }>) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const reduce = useReducedMotion();
