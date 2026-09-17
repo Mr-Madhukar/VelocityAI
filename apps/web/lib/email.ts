@@ -4,7 +4,7 @@ import { prdDocumentFilename, type PrdDocumentData } from "@repo/services/shipfl
 import { renderPrdPdf } from "./prd-pdf";
 
 const FROM = process.env.RESEND_FROM_EMAIL ?? "VelocityAI <invites@VelocityAI.in>";
-const APP_URL = process.env.BETTER_AUTH_URL ?? "https://VelocityAI.in";
+const APP_URL = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://my-ai-code-reviewer.onrender.com";
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) {
@@ -266,7 +266,7 @@ export async function sendPrdShareEmail(input: SendPrdShareEmailInput) {
   const doc = input.document;
   const featureUrl = `${APP_URL}/features/${input.featureId}?tab=prd&view=document`;
   const approved = Boolean(doc.approvedAt);
-  const statusLabel = approved ? "Approved" : doc.status.replace(/_/g, " ");
+  const statusLabel = approved ? "Approved" : doc.status.replaceAll("_", " ");
   const orgName = doc.orgName ?? "your team";
 
   const pdf = await renderPrdPdf(doc);

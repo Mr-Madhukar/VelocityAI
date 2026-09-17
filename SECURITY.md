@@ -78,5 +78,5 @@ reports without an underlying vulnerability, and issues in third-party services
 ## Supported versions
 
 VelocityAI is delivered as a continuously deployed application
-(<https://VelocityAI.in>); security fixes land on `main` and ship to production. There is
+(<https://my-ai-code-reviewer.onrender.com>); security fixes land on `main` and ship to production. There is
 no separate LTS branch.

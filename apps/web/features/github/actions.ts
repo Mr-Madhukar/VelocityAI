@@ -234,7 +234,7 @@ export async function listInstallationRepos(installationId: number): Promise<Git
       .select({ installationId: githubInstallations.installationId })
       .from(githubInstallations)
       .where(eq(githubInstallations.userId, ctx.userId));
-    if (!saved || saved.installationId !== installationId) return [];
+    if (saved?.installationId !== installationId) return [];
 
     const app = getGithubApp();
     const octokit = await app.getInstallationOctokit(installationId);
@@ -335,6 +335,113 @@ export async function listRepoContributors(
   }
 }
 
+interface RepoRowMeta {
+  id: string;
+  installationId: number | null;
+  webhookId: string | null;
+}
+
+async function ensureRepoWebhook(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  repositoryId: string | null,
+  activeRepoRow?: RepoRowMeta,
+): Promise<void> {
+  if (!activeRepoRow || activeRepoRow.webhookId || !repositoryId) return;
+
+  try {
+    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://my-ai-code-reviewer.onrender.com"}/api/github/webhook`;
+    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "velocityai-webhook-secret";
+    const { data: createdHook } = await octokit.rest.repos.createWebhook({
+      owner,
+      repo,
+      name: "web",
+      active: true,
+      events: ["pull_request", "pull_request_review", "push"],
+      config: {
+        url: webhookUrl,
+        content_type: "json",
+        secret: webhookSecret,
+        insecure_ssl: "0",
+      },
+    });
+    if (createdHook?.id) {
+      await db
+        .update(repositories)
+        .set({ webhookId: String(createdHook.id) })
+        .where(eq(repositories.id, repositoryId));
+    }
+  } catch {
+    /* proceed gracefully if app already receives organization-level events */
+  }
+}
+
+interface SyncPrContext {
+  fullName: string;
+  organizationId: string | null;
+  repositoryId: string | null;
+  installationId: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncSinglePullRequest(pr: any, ctx: SyncPrContext): Promise<void> {
+  const branch = pr.head.ref;
+  const prId = `pr_${pr.id}`;
+  const featureId = await resolveAutoLinkFeatureId(db, {
+    branch,
+    organizationId: ctx.organizationId,
+    prId,
+  });
+
+  const saved = await db
+    .insert(pullRequestsTable)
+    .values({
+      id: prId,
+      featureId,
+      ...(featureId ? { linkedHeadSha: pr.head.sha, linkedAt: new Date() } : {}),
+      repositoryId: ctx.repositoryId,
+      installationId: ctx.installationId,
+      githubPrId: pr.id,
+      githubPrUrl: pr.html_url,
+      number: pr.number,
+      title: pr.title,
+      body: pr.body ?? null,
+      authorLogin: pr.user?.login ?? null,
+      headBranch: branch,
+      baseBranch: pr.base.ref,
+      headSha: pr.head.sha,
+      repoFullName: ctx.fullName,
+      state: pr.merged_at ? "merged" : pr.state,
+    })
+    .onConflictDoUpdate({
+      target: pullRequestsTable.id,
+      set: {
+        ...(featureId
+          ? { featureId, linkedHeadSha: pr.head.sha, linkedAt: new Date() }
+          : {}),
+        repositoryId: ctx.repositoryId,
+        headSha: pr.head.sha,
+        state: pr.merged_at ? "merged" : pr.state,
+        title: pr.title,
+        body: pr.body ?? null,
+        updatedAt: new Date(),
+      },
+    })
+    .returning({ featureId: pullRequestsTable.featureId });
+
+  const linkedFeatureId = saved[0]?.featureId ?? featureId;
+  const isOpen = !pr.merged_at && pr.state === "open";
+  if (linkedFeatureId && isOpen && !(await shouldSkipAutoReview(prId, pr.head.sha))) {
+    await inngest
+      .send({
+        name: "github/pull_request.review_requested",
+        data: { pullRequestId: prId, repoFullName: ctx.fullName },
+      })
+      .catch((err) => console.error("Failed to enqueue review during sync:", err));
+  }
+}
+
 /**
  * Pull the latest PRs from GitHub and upsert them into our DB so the dashboard
  * renders instantly and review status can be joined in. Feature-branch PRs are
@@ -360,7 +467,6 @@ export async function syncRepoPullRequests(
 
     const organizationId = await resolveOrgIdForRepo(db, fullName, installationId);
 
-    // The connected repo row — billing org resolution + project scoping.
     const repoRows = await db
       .select({
         id: repositories.id,
@@ -372,102 +478,18 @@ export async function syncRepoPullRequests(
     const repositoryId =
       repoRows.find((r) => r.installationId === installationId)?.id ?? repoRows[0]?.id ?? null;
 
-    // Automated webhook creation: provision a repository webhook if not already stored
     const activeRepoRow = repoRows.find((r) => r.id === repositoryId);
-    if (activeRepoRow && !activeRepoRow.webhookId && repositoryId) {
-      try {
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://VelocityAI.in"}/api/github/webhook`;
-        const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "velocityai-webhook-secret";
-        const { data: createdHook } = await octokit.rest.repos.createWebhook({
-          owner,
-          repo,
-          name: "web",
-          active: true,
-          events: ["pull_request", "pull_request_review", "push"],
-          config: {
-            url: webhookUrl,
-            content_type: "json",
-            secret: webhookSecret,
-            insecure_ssl: "0",
-          },
-        });
-        if (createdHook?.id) {
-          await db
-            .update(repositories)
-            .set({ webhookId: String(createdHook.id) })
-            .where(eq(repositories.id, repositoryId));
-        }
-      } catch {
-        /* proceed gracefully if app already receives organization-level events */
-      }
-    }
+    await ensureRepoWebhook(octokit, owner, repo, repositoryId, activeRepoRow);
+
+    const prCtx: SyncPrContext = {
+      fullName,
+      organizationId,
+      repositoryId,
+      installationId,
+    };
 
     for (const pr of data) {
-      const branch = pr.head.ref;
-      const prId = `pr_${pr.id}`;
-      // Guarded: never steals a feature already linked to another PR, and stays
-      // null for a PR that already holds the link (no re-stamping).
-      const featureId = await resolveAutoLinkFeatureId(db, {
-        branch,
-        organizationId,
-        prId,
-      });
-
-      const saved = await db
-        .insert(pullRequestsTable)
-        .values({
-          id: prId,
-          featureId,
-          // Record which commit the PR was at when it got linked to the feature.
-          ...(featureId ? { linkedHeadSha: pr.head.sha, linkedAt: new Date() } : {}),
-          repositoryId,
-          installationId,
-          githubPrId: pr.id,
-          githubPrUrl: pr.html_url,
-          number: pr.number,
-          title: pr.title,
-          body: pr.body ?? null,
-          authorLogin: pr.user?.login ?? null,
-          headBranch: branch,
-          baseBranch: pr.base.ref,
-          headSha: pr.head.sha,
-          repoFullName: fullName,
-          state: pr.merged_at ? "merged" : pr.state,
-        })
-        .onConflictDoUpdate({
-          target: pullRequestsTable.id,
-          set: {
-            // Only overwrite the feature link when the guarded resolver says
-            // this is a genuine new link — a null here would wipe a manual link
-            // on every dashboard sync. The guard also means the link-time
-            // stamps only ever fire on the actual link transition.
-            ...(featureId
-              ? { featureId, linkedHeadSha: pr.head.sha, linkedAt: new Date() }
-              : {}),
-            repositoryId,
-            headSha: pr.head.sha,
-            state: pr.merged_at ? "merged" : pr.state,
-            title: pr.title,
-            body: pr.body ?? null,
-            updatedAt: new Date(),
-          },
-        })
-        .returning({ featureId: pullRequestsTable.featureId });
-
-      // Auto-trigger a review for open, feature-linked PRs that haven't been
-      // reviewed yet. This makes reviews appear even when the GitHub webhook
-      // never arrives (misconfigured URL, Inngest dev server offline, etc.).
-      // Uses the row's effective link so manually-linked PRs auto-review too.
-      const linkedFeatureId = saved[0]?.featureId ?? featureId;
-      const isOpen = !pr.merged_at && pr.state === "open";
-      if (linkedFeatureId && isOpen && !(await shouldSkipAutoReview(prId, pr.head.sha))) {
-        await inngest
-          .send({
-            name: "github/pull_request.review_requested",
-            data: { pullRequestId: prId, repoFullName: fullName },
-          })
-          .catch((err) => console.error("Failed to enqueue review during sync:", err));
-      }
+      await syncSinglePullRequest(pr, prCtx);
     }
 
     return { synced: data.length };
@@ -542,7 +564,7 @@ export async function setupRepoWebhookAction(
     const app = getGithubApp();
     const octokit = await app.getInstallationOctokit(installationId);
     const [owner, repo] = splitFullName(fullName);
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://VelocityAI.in"}/api/github/webhook`;
+    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://my-ai-code-reviewer.onrender.com"}/api/github/webhook`;
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "velocityai-webhook-secret";
 
     const { data: createdHook } = await octokit.rest.repos.createWebhook({

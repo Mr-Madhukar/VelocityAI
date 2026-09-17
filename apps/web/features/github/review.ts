@@ -240,7 +240,7 @@ async function postGitHubReviewAndCommitStatus(
 
   try {
     const targetUrl = featureId
-      ? `${process.env.NEXT_PUBLIC_APP_URL || "https://VelocityAI.in"}/features/${featureId}`
+      ? `${process.env.NEXT_PUBLIC_APP_URL || "https://my-ai-code-reviewer.onrender.com"}/features/${featureId}`
       : undefined;
 
     await octokit.rest.repos.createCommitStatus({

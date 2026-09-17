@@ -1,242 +1,215 @@
-Product Requirements Document (PRD)
-VelocityAI — AI-Assisted Product Delivery Platform
-Version: 1.0 Status: Draft for Hackathon Build (ChaiCode Builder Mode) Owner: [Madhukar]
+# 🚀 Product Requirements Document (PRD)
+## **VelocityAI — Autonomous Product Delivery Cockpit**
 
-1. Problem Statement
-Software teams lose velocity not because AI can't write code fast enough, but because the process around code — requirement gathering, PRD writing, task breakdown, code review, and release approval — is manual, slow, and scattered across tools (email, Slack, Jira, GitHub, spreadsheets).
+| **Document Metadata** | **Details** |
+|:---|:---|
+| **Product Name** | **VelocityAI** (Internal Core: `shipflow-ai`) |
+| **Document Version** | `v1.0.0` (Production Master Spec) |
+| **Product Stage** | Production / Live |
+| **Live URL** | [https://my-ai-code-reviewer.onrender.com](https://my-ai-code-reviewer.onrender.com) |
+| **Owner / Lead** | [@Mr-Madhukar](https://github.com/Mr-Madhukar) |
+| **Target Audience** | Engineering Managers, Founders, Product Managers, Full-Stack Engineers |
 
-There is no single platform that takes a raw feature request and carries it, in a structured and auditable way, all the way to a shipped, human-approved release — with AI actively doing the product thinking, task planning, and code review along the way.
+---
 
-VelocityAI solves this by acting as an AI-native delivery pipeline: Request → PRD → Tasks → Code → AI Review → Fixes → Human Approval → Ship.
+## 1. 📌 Executive Summary & Product Vision
 
-2. Goals
-Let a customer/product owner submit a feature request in natural language and have AI turn it into a structured PRD.
-Automatically break a PRD into actionable, trackable engineering tasks.
-Connect directly to GitHub repos and track real pull requests (no mocked/hardcoded PR data).
-Run AI-powered code review against the PRD's actual acceptance criteria — not just linting.
-Support a fix → re-review loop until the AI review is clean.
-Require a human to give final sign-off before a feature is marked "Shipped."
-Support multiple isolated workspaces (multi-tenant), each with its own users, repos, PRDs, and billing.
-Run long AI/GitHub operations asynchronously (Inngest) with visible progress in the UI.
-Monetize via Razorpay with free vs. paid tiers (AI review credits, repo limits, premium workflows).
+### 1.1 The Problem
+Software development teams face severe friction between ideation and release:
+1. **Ambiguous Requirements**: Feature ideas start as messy thoughts, half-baked Slack messages, or vague tickets, leading to scope creep and misalignment.
+2. **Manual Planning Overhead**: Engineering leads spend hours decomposing PRDs into granular tasks, sizing efforts, and assigning them according to team specialties.
+3. **Disconnected Code Reviews**: Traditional code reviews focus on syntax, linting, or personal stylistic preferences rather than verifying whether the code actually satisfies the original PRD acceptance criteria.
+4. **Broken Feedback Loops**: When PR reviews uncover issues, engineers must manually cross-reference findings, draft fixes, and re-request reviews, causing delays.
+5. **Fragmented Toolchain**: Teams juggle Jira/Linear (tickets), Notion/Google Docs (PRDs), GitHub (code & PRs), and external review bots without unified synchronization.
 
-3. Non-Goals (v1)
-Not building a full project-management replacement (no full Gantt charts, no custom Kanban automations beyond what's needed for the core loop).
-Not supporting GitLab/Bitbucket in v1 — GitHub only.
-Not auto-merging or auto-deploying code — humans approve releases; VelocityAI marks status, it does not push to production infra.
-Not replacing human code review entirely — AI review is advisory + blocking-gate, final approval is always human.
-No native mobile app in v1 (responsive web only).
-No custom AI model training — uses AI SDK against hosted LLM providers.
+### 1.2 The Solution
+**VelocityAI** is an all-in-one, AI-assisted product delivery cockpit that compresses the entire lifecycle from raw feature concept to production-shipped code. VelocityAI automates structured, repetitive tasks—clarifying requests, generating PRDs, decomposing tasks, reviewing PRs against requirements, and even drafting pull request fixes—while leaving critical business approvals firmly in human hands.
 
-4. Target Users / Personas
-Persona	Description	Needs
-Product Owner (Priya)	Submits feature requests, wants PRDs written for her fast and accurately	Fast, structured PRDs; ability to answer clarifying questions; visibility into progress
-Engineering Lead (Arjun)	Approves task breakdown, oversees dev team, connects repos	Reliable task generation, GitHub integration, review history, control over release
-Developer / Coding Agent (Dev)	Implements tasks, opens PRs	Clear tasks tied to PRD, actionable AI review comments
-QA/Reviewer (Human Approver)	Final gatekeeper before release	Full audit trail: PRD, tasks, PR, AI review history, outstanding issues
-Org Admin	Manages workspace, billing, users	Multi-tenant workspace control, usage limits, plan management
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                               VELOCITYAI END-TO-END PIPELINE                             │
+├─────────────┬─────────────┬─────────────┬─────────────┬─────────────┬────────────────────┤
+│ 1. DISCOVER │ 2. DOCUMENT │ 3. BREAKDOWN│ 4. CODE GEN │ 5. QA AUDIT │ 6. RELEASE GATE    │
+│  Raw Idea   │ AI PRD Gen  │ Auto Tasks  │ AI Copilot  │ GitHub PR   │ Strict Checklist & │
+│  + PM Agent │ + PDF & Mail│ & Kanban    │ (Draft PR)  │ Review Bot  │ Production Ship 🚢 │
+└─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴────────────────────┘
+```
 
-5. User Stories
-As a product owner, I can submit a feature request via a form (email/ticket-style) so AI can start processing it.
-As a product owner, I want the AI to ask me clarifying questions when my request is ambiguous, so the PRD is accurate.
-As a product owner, if a similar feature already exists, I want to be told before a duplicate PRD is generated.
-As an eng lead, I want the AI-generated PRD broken into tasks on a Kanban board automatically.
-As an eng lead, I want to review and approve the task plan before development starts.
-As a developer, I want to link a GitHub repo so my PRs are automatically tracked against the feature.
-As a developer, I want AI review feedback on my PR that references specific PRD acceptance criteria, not generic code style comments.
-As a developer, when AI review finds blocking issues, I want the feature to return to a "fix needed" state with a clear issue list.
-As a human reviewer, I want to see full review history (all AI review rounds) before approving a release.
-As a human reviewer, I can approve or reject a release; only approved features move to "Shipped."
-As an org admin, I want each workspace to have isolated data (users, repos, PRDs, billing).
-As an org admin, I want to see AI review credit usage and upgrade plans via Razorpay when limits are hit.
-As any user, I want to see real-time progress on long-running AI/GitHub jobs (e.g., "Analyzing PR diff...").
+---
 
-6. Core Workflow (The Loop)
-Feature Request → Context Gathering (AI Q&A) → PRD Generation → Task Breakdown
-   → Kanban Planning Approval → GitHub Repo Connected → PR Created
-   → AI Code Review (vs PRD + criteria) → [Blocking Issues?] 
-        → Yes: Fix Needed → Developer Updates → Re-Review (loop)
-        → No: Ready for Human Review
-   → Human Approval/Rejection → Shipped
-Phase 1 — Product Discovery
-Multi-channel intake (web form modeling email/ticket/call transcript input).
-AI agent asks follow-up questions when request is incomplete or ambiguous.
-AI checks existing PRDs/features in the workspace for duplicates; if a close match exists, it informs the user instead of generating a new PRD.
-On confirmation, AI generates a structured PRD: Problem Statement, Goals, Non-Goals, User Stories, Acceptance Criteria, Edge Cases, Success Metrics.
-Phase 2 — Planning
-PRD is parsed into discrete engineering tasks (title, description, estimated complexity, linked acceptance criteria).
-Tasks appear on a Kanban board (Backlog → In Progress → In Review → Done).
-Eng lead reviews/edits/approves the task plan before development is considered "started."
-Phase 3 — Development
-Repo connected via Octokit/GitHub App install.
-Developers or coding agents implement tasks and open PRs referencing the feature.
-Webhooks capture PR open/sync/close events in real time.
-Phase 4 — AI Review Loop
-On PR open/update, an Inngest workflow triggers: fetch diff → analyze against PRD/acceptance criteria/tasks → check security, performance, edge cases, code quality.
-Issues are tagged Blocking or Non-blocking, each with an explanation of why it's an issue and a suggested fix.
-Review comments are posted back to the PR (GitHub) and stored in VelocityAI's review history.
-If blocking issues exist → feature status becomes Fix Needed. On new commits, the loop re-triggers automatically (Re-Review).
-When no blocking issues remain → status becomes Ready for Human Review.
-Phase 5 — Human Approval & Release
-Human reviewer sees a consolidated view: PRD, tasks, PR diff summary, full AI review history, any outstanding non-blocking issues.
-Reviewer clicks Approve or Reject (with comments).
-Approved features move to Shipped; rejected ones return to Fix Needed or Planning.
+## 2. 👥 User Personas & Target Audiences
 
-7. Functional Requirements by Module
-7.1 Feature Requests
-Create request (title, description, source channel, submitter).
-AI clarification Q&A thread attached to the request.
-Duplicate-detection check against existing workspace PRDs.
-Status: New → Clarifying → PRD Generated → Planning → In Dev → In Review → Fix Needed → Ready for Approval → Shipped / Rejected.
-7.2 PRD Editor
-AI-generated draft, human-editable rich text/structured sections.
-Versioning (track edits after AI generation).
-Export/share PRD.
-7.3 Task Board (Kanban)
-Tasks auto-generated from PRD, linked to specific acceptance criteria.
-Drag-and-drop status changes.
-Assign to user; complexity/estimate field.
-Approval gate before "Development" phase officially opens.
-7.4 GitHub Integration
-OAuth/GitHub App connection per workspace.
-Repo selection & linking to a project.
-Webhook receiver: pull_request.opened, synchronize, closed, push.
-Fetch PR metadata, changed files, and diffs via Octokit — no hardcoded/mocked PR data.
-Display PR status, linked feature, and commit history in-app.
-7.5 AI Review Engine
-Triggered via Inngest on PR open/update.
-Inputs: PRD, acceptance criteria, task list, PR diff, changed files.
-Outputs: categorized issues (Blocking/Non-blocking), rationale, suggested fix, confidence/severity.
-Posts summary comment to GitHub PR + stores structured review record.
-Supports multiple review rounds (history preserved, diffed against previous round).
-7.6 Human Approval & Release
-Consolidated release-readiness dashboard.
-Approve/Reject action with mandatory comment on reject.
-Immutable audit log of who approved, when, and against which review round.
-"Shipped" marks feature complete; optional changelog entry.
-7.7 Workspaces / Multi-Tenancy
-Organization → Workspace → Projects hierarchy.
-Per-workspace: users & roles (Admin/Eng Lead/Developer/Viewer), projects, repos, feature requests, PRDs, tasks, review history, billing status.
-Role-based access control on sensitive actions (approve release, manage billing, connect repos).
-7.8 Billing (Razorpay)
-Free tier: limited AI review credits/month, 1 repo, basic workflow.
-Paid tier(s): higher/unlimited AI credits, multiple repos, premium workflow features (e.g., custom review rules, priority queue).
-Usage metering (AI review credits consumed per review round).
-Razorpay checkout + webhook-driven subscription/plan status updates.
-7.9 Async Workflows (Inngest)
-Each of the following runs as a durable, retryable, observable background job:
+| Persona | Role | Key Pain Points | VelocityAI Value Proposition |
+|:---|:---|:---|:---|
+| **Priya (Product Manager)** | Defines roadmap, writes specs, aligns stakeholders | Spends 10+ hours/week writing PRDs; engineers frequently misinterpret requirements | Interactive AI clarification agent asks sharp discovery questions and writes comprehensive, structured PRDs with exportable PDFs in seconds. |
+| **Alex (Engineering Lead)** | Architects systems, assigns work, enforces quality | Difficulty breaking features into clean tasks; reviewing PRs takes too much time | Automated task decomposition mapped to engineer specialties; automated AI code reviews validating every acceptance criterion before human merge. |
+| **Rohan (Senior / Staff Engineer)** | Implements features, writes PRs, fixes bugs | Context switching between tickets and code; review cycles stall on minor edge cases | Built-in AI Copilot that drafts implementations directly against repo context; automated inline PR feedback identifying exact lines violating the PRD. |
+| **David (Founder / CTO)** | Manages resources, tracks velocity, signs off on releases | Uncontrolled release quality; lack of visibility on team velocity and billing | Org-scoped visibility, strict multi-step release gates, metered AI review credits with transparent Razorpay billing. |
 
-PRD generation
-Task generation
-Repository analysis (on connect)
-PR processing (fetch diff/files)
-AI review + re-review
-Release readiness checks
-In-app job status/progress stream (e.g., step-by-step "Fetching diff → Running AI review → Posting comments").
+---
 
-8. Non-Functional Requirements
-Type safety: end-to-end via tRPC across monorepo apps/packages.
-Auditability: every AI decision (PRD, task, review) and human action (approve/reject) is logged and retrievable.
-Reliability: async jobs must be retryable/idempotent (Inngest) — a failed AI review shouldn't corrupt state.
-Security: GitHub tokens/webhook secrets stored securely; workspace data isolation enforced at the query layer.
-Performance: PR diff analysis should scale to typical PR sizes; large diffs should be chunked for the AI SDK calls.
-Extensibility: review rule set and PRD template should be workspace-configurable (stretch goal).
-9. Success Metrics
-Time from feature request → generated PRD (target: minutes, not hours).
-% of feature requests that reach "Shipped" without manual PRD rewriting.
-Average number of AI review rounds before human approval (lower is better, tracks code quality).
-AI review issue precision (developer-confirmed valid blocking issues / total flagged).
-Time from "Ready for Human Review" → Approved.
-Workspace activation rate (repo connected + first PR reviewed) for new signups.
+## 3. 🔄 The Core End-to-End Workflow
 
-10. Edge Cases
-Feature request is too vague even after 2–3 rounds of clarifying questions → escalate to "Needs Manual Definition" instead of forcing a PRD.
-Requested feature already exists → inform user, link existing feature, do not generate duplicate PRD (unless user explicitly confirms they still want one).
-PR opened against a task that has no linked PRD/acceptance criteria (e.g., hotfix) → allow "unlinked PR" review mode with reduced context.
-GitHub webhook delivery failure/delay → reconciliation job periodically polls repo for missed events.
-AI review service temporarily unavailable → job retries via Inngest with backoff; UI shows "Review pending" not a false pass.
-Reviewer approves despite outstanding non-blocking issues → allowed, but issues are logged as "accepted debt" in the audit trail.
-Free-tier AI credits exhausted mid-review-loop → block further AI reviews, prompt upgrade, allow human-only approval path.
-Multiple developers pushing to the same PR concurrently → re-review debounced/queued, not run per-commit in parallel.
+```mermaid
+flowchart TD
+    A[💡 Raw Feature Request] --> B[🤖 AI Clarification Agent]
+    B --> C[📝 Generated PRD v1.0]
+    C --> D{👤 Human Approval}
+    D -- Rejected / Edit --> C
+    D -- Approved --> E[📋 Automatic Task Decomposition]
+    E --> F[📊 Kanban Board & Assignment]
+    F --> G[💻 Development / AI Copilot]
+    G --> H[🐙 GitHub Pull Request]
+    H --> I[🛡️ Automated AI PR Review]
+    I --> J{Verification Score & Findings}
+    J -- Blocked / Changes Req --> K[🔧 Fix Loop & Re-review]
+    K --> H
+    J -- Passed & 100% Compliant --> L[🚦 Release Gate Validation]
+    L --> M{👤 Final Human Sign-off}
+    M -- Approved --> N[🚀 Shipped to Production 🚢]
+```
 
-11. Technical Architecture
-11.1 Monorepo Structure (tRPC Monorepo — Turborepo/pnpm workspaces)
-apps/
-  web/            → Next.js app (Shadcn UI, dashboard, all product pages)
-  workers/         → Inngest functions (or hosted inside web via /api/inngest)
-packages/
-  api/            → tRPC routers (feature-requests, prds, tasks, github, reviews, billing, workspaces)
-  db/             → Prisma or Drizzle schema + client
-  auth/           → BetterAuth config & helpers
-  ai/             → AI SDK wrappers: clarify, generate-PRD, generate-tasks, review-PR
-  github/         → Octokit client, webhook verification, diff fetch helpers
-  billing/        → Razorpay client, plan/credit logic
-  ui/             → Shared Shadcn-based components
-  config/         → eslint/tsconfig/tailwind shared config
-11.2 Core Data Model (high level)
-Organization 1—N Workspace
-Workspace 1—N User (via membership + role), Project, Repository, FeatureRequest, BillingAccount
-FeatureRequest 1—1 PRD; PRD 1—N Task
-Repository 1—N PullRequest; PullRequest 1—N ReviewRound
-ReviewRound 1—N ReviewIssue (blocking/non-blocking)
-ApprovalDecision linked to FeatureRequest + ReviewRound (final human sign-off)
-BillingAccount 1—N Subscription, CreditLedger entries
-11.3 Key tRPC Routers
-featureRequest.create / clarify / listByWorkspace
-prd.generate / update / getVersionHistory
-task.generateFromPRD / updateStatus / listByProject
-github.connectRepo / listRepos / handleWebhookEvent (internal)
-review.trigger / getHistory / postDecision
-approval.approve / reject / getAuditTrail
-billing.createCheckout / getUsage / webhookHandler
-workspace.create / inviteUser / getSettings
-11.4 AI SDK Usage Points
-Clarifier agent — asks targeted follow-up questions, detects duplicates.
-PRD generator — structured-output generation (problem, goals, non-goals, stories, criteria, edge cases, metrics).
-Task planner — decomposes PRD into engineering tasks with acceptance-criteria links.
-Repo analyzer — summarizes repo structure/stack on connect for review context.
-PR reviewer — evaluates diff vs. PRD/criteria/tasks; outputs categorized issues + rationale.
-Release-readiness checker — final pass summarizing whether the feature is production-ready.
-11.5 Inngest Event Map (examples)
-feature-request/created → run clarifier + duplicate check
-prd/generation.requested → generate PRD → emit prd/generated
-prd/approved → generate tasks → emit tasks/generated
-github/pr.opened / github/pr.synchronized → fetch diff → run AI review → post comments → emit review/completed
-review/completed (blocking issues found) → set status fix-needed
-approval/decision.made → if approved, mark shipped, write changelog
+---
 
-12. Recommended Pages
-Page	Purpose
-Landing Page	Product marketing, pricing teaser
-Auth (BetterAuth)	Sign up/login, org creation
-Dashboard	Cross-project overview, active features, pending approvals
-Workspace Management	Members, roles, repos, billing
-Project View	Features, tasks, repos scoped to a project
-Feature Request Detail	Clarification thread, status timeline
-PRD Editor	AI draft + human edits, version history
-Task Board	Kanban view
-GitHub Integration	Connect/manage repos, webhook status
-Pull Request Reviews	PR list, diff summary, AI review results
-Review History	All rounds, blocking/non-blocking trend
-Billing	Plan, usage, upgrade (Razorpay)
-Final Approval & Release	Consolidated readiness view, approve/reject
-13. Rollout / Milestone Plan (Hackathon-scoped)
-Day 1: Monorepo scaffold, BetterAuth, workspace/org data model, tRPC base routers.
-Day 2: Feature request intake + AI clarifier + PRD generation (AI SDK).
-Day 3: Task generation + Kanban board; GitHub App connect + webhook receiver (Octokit).
-Day 4: AI review engine (Inngest) + fix/re-review loop + review history UI.
-Day 5: Human approval flow + Razorpay billing (plans/credits) + polish/landing page.
-Day 6: Deploy to Vercel, record demo video, finalize README, social posts.
+## 4. 🧩 Core Product Capabilities & Functional Requirements
 
-14. Deliverables Checklist
- Public GitHub repo (monorepo)
- Live deployed app (Vercel)
- Demo video
- README (overview, stack, architecture, setup, env vars, DB schema notes, GitHub integration setup, Inngest workflow explanation, AI features)
- LinkedIn + X/Twitter launch post tagging ChaiCode, Hitesh Sir, Piyush, with hashtag #chaicode and the line "Builder Mode On | iPhone Giveaway Hackathon"
- 
-15. Risks & Open Questions
-Risk: AI review false positives could frustrate developers — mitigate with confidence scoring + non-blocking bucket.
-Risk: GitHub webhook reliability in a hackathon timeframe — mitigate with polling fallback.
-Open question: Should free-tier users be able to connect private repos, or public-only?
-Open question: Does "duplicate feature" detection compare against PRDs in the same workspace only, or org-wide?
+### 4.1 Feature Ingestion & AI Clarification Engine
+* **Input**: Natural-language feature prompts submitted via the modern dashboard.
+* **Interactive Clarification Agent**:
+  * An autonomous product-manager agent reviews the prompt and identifies gaps, ambiguities, and edge cases.
+  * Conducts a targeted Q&A dialogue with the submitter before locking the scope.
+  * Preserves full conversation context across iterations.
+
+### 4.2 Automated PRD Generation & Living Document Studio
+* **Structured Output Engine**:
+  * Generates industry-grade PRDs containing: Executive Problem Statement, Core Goals & Non-Goals, User Personas & Stories, Numbered Acceptance Criteria, Technical Edge Cases, Security Considerations, and Estimated Hours.
+* **Living Studio**:
+  * Rich markdown editor with live preview, diff tracking, and version increments (`v1.0`, `v1.1`, etc.).
+  * In-place AI revision: "Expand on security risks", "Add rate-limiting criteria".
+* **Export & Collaboration**:
+  * **On-the-fly PDF Generation**: Generates styled, branded PDF copies of the PRD.
+  * **Email Dispatch**: Direct team sharing via Resend with PDF attached.
+
+### 4.3 Task Decomposition & Smart Kanban Engine
+* **Specialty-Aware Task Generation**:
+  * When a PRD is approved, Inngest triggers an automated decomposition job.
+  * Tasks are categorized by domain (`frontend`, `backend`, `database`, `devops`, `qa`).
+  * Estimates complexity (Story Points and Hours) and assigns them to teammates based on their registered expertise.
+* **Interactive Kanban Board**:
+  * Columns: `Backlog`, `In Progress`, `In Review`, `Done`.
+  * Real-time drag-and-drop status syncing via Pusher WebSockets.
+
+### 4.4 GitHub App Integration & Autonomous PR Auditing
+* **Bi-directional Webhook Ingestion**:
+  * Listens for `pull_request` (`opened`, `synchronize`, `reopened`) events.
+  * Validates HMAC `x-hub-signature-256` signatures against `GITHUB_WEBHOOK_SECRET`.
+* **Automated AI Acceptance-Criteria Reviewer**:
+  * Pulls PR diffs, commit logs, and modified files via Octokit.
+  * Evaluates code changes against **every single acceptance criterion** defined in the linked PRD.
+  * Assigns an overall **Compliance Score (0–100%)** and verdict (`Approved` vs `Changes Requested`).
+  * Posts structured findings directly as GitHub PR review comments, categorized by severity:
+    * 🔴 **Blocking**: Must be resolved before merging.
+    * 🟡 **Warning**: Potential architectural or performance risk.
+    * 🟢 **Positive**: Praises clean, well-tested implementations.
+* **Commit Status Checks**:
+  * Sets GitHub commit status check: `VelocityAI/prd-compliance` (`pending`, `success`, or `failure`).
+
+### 4.5 AI Copilot Studio (Build / Fix / Improve)
+* **Repository Context Indexing**:
+  * Ingests repo trees, symbols, and core structures into semantic cache.
+* **Three Operational Modes**:
+  1. **Build**: Turns a feature prompt or PRD task into clean, multi-file code plans.
+  2. **Fix**: Ingests failed PR review findings and automatically generates code patches addressing each issue.
+  3. **Improve**: Refactors code for performance, test coverage, and documentation.
+* **Autonomous Branch & Draft PR Creation**:
+  * Ability to commit patches to a new branch (`velocity/{featureId}`) and open a draft GitHub PR automatically.
+
+### 4.6 Strict Release Gate & Production Ship Cockpit
+* **4-Point Release Checklist**:
+  1. PRD Approved by an authorized team member.
+  2. All engineering tasks moved to `Done`.
+  3. Linked GitHub PR merged with all blocking AI review issues resolved.
+  4. Explicit human sign-off recorded with audit timestamp.
+* **Shipped Audit Trail**:
+  * Locks the feature status to `shipped`.
+  * Dispatches real-time broadcast and notification to all organization members.
+
+### 4.7 Multi-Tenant RBAC & Organization Isolation
+* **Isolation**: All domain tables enforce `organization_id` foreign keys with database-level cascading.
+* **Roles**:
+  * `Owner`: Billing, organization deletion, member removal.
+  * `Admin`: Plan upgrades, GitHub app installation, feature approvals.
+  * `Member`: Feature submission, task completion, Copilot runs.
+* **Branded Email Invites**: Secure 7-day invite tokens sent via Resend with auto-acceptance on registration.
+
+### 4.8 Metered Billing & Razorpay Credits Engine
+* **Credit Consumption**: Each automated AI PR review consumes 1 AI Review Credit.
+* **Plan Tiers**:
+  * **Free**: 1 Repository, 10 Review Credits/month, 2 Seats.
+  * **Pro**: Unlimited Repositories, 100 Review Credits/month, 5 Seats.
+  * **Scale**: Unlimited Repositories, 500 Review Credits/month, Unlimited Seats.
+* **Webhook Idempotency**: Processed via `processed_webhook_event` ledger table with HMAC signature validation.
+
+---
+
+## 5. 🏗️ System Architecture & Monorepo Structure
+
+```
+VelocityAI (Turborepo Monorepo)
+├── apps/
+│   └── web/                               # Next.js 16 (App Router)
+│       ├── app/                           # React 19 UI & Pages
+│       │   ├── (auth)/                    # Sign-in, sign-up, verification
+│       │   ├── (protected)/               # Dashboard, features, kanban, billing
+│       │   └── api/                       # Route handlers (tRPC, webhooks, auth)
+│       ├── features/                      # Domain features (ai, copilot, github, inngest)
+│       ├── hooks/                         # React hooks (useOrgRealtime, trpc)
+│       └── lib/                           # Clients (auth, email, github, realtime)
+└── packages/
+    ├── database/                          # Drizzle ORM schemas, migrations, Neon client
+    ├── trpc/                              # Type-safe tRPC Server routers & procedures
+    ├── services/                          # Pure deterministic business logic & unit tests
+    ├── logger/                            # Structured loggers
+    └── typescript-config/                 # Strict TS configs
+```
+
+---
+
+## 6. 💾 Database Entity Relationship Overview
+
+| Table | Primary Purpose | Key Fields & Foreign Keys |
+|:---|:---|:---|
+| `users` | Core user identity | `id`, `name`, `email`, `image`, `role` |
+| `organizations` | Tenant boundary | `id`, `name`, `slug`, `logo`, `created_by` |
+| `members` | Org membership & roles | `id`, `organization_id`, `user_id`, `role` |
+| `feature_requests` | Core feature unit | `id`, `organization_id`, `title`, `description`, `status` |
+| `prds` | Living requirements document | `id`, `feature_id`, `version`, `content`, `status`, `approved_by` |
+| `tasks` | Actionable work items | `id`, `feature_id`, `title`, `domain`, `status`, `assigned_to` |
+| `github_installations` | GitHub App connections | `id`, `installation_id`, `account_login`, `account_id` |
+| `repositories` | Connected repos | `id`, `organization_id`, `github_repo_id`, `full_name` |
+| `pull_requests` | Synced pull requests | `id`, `repository_id`, `number`, `title`, `head_sha`, `state` |
+| `review_cycles` | Audit runs for a PR | `id`, `pull_request_id`, `status`, `compliance_score`, `summary` |
+| `review_issues` | Specific review findings | `id`, `review_cycle_id`, `severity`, `file_path`, `suggestion` |
+| `subscriptions` | Razorpay billing state | `id`, `organization_id`, `plan_id`, `credits_balance`, `status` |
+
+---
+
+## 7. 🛡️ Security, Reliability & Compliance
+
+1. **Defense-in-Depth Authentication**: Edge middleware optimistic cookie checks coupled with database-authoritative session validation via BetterAuth.
+2. **Webhook Integrity**:
+   * GitHub Webhooks verified using HMAC-SHA256 (`x-hub-signature-256`).
+   * Razorpay Webhooks verified using HMAC-SHA256 signatures with duplicate-event deduplication.
+3. **Resilient Background Execution**:
+   * Long-running generation handled via **Inngest** durable execution.
+   * Seamless **Inline Fallbacks** ensuring code reviews never drop even during external queue outages.
+4. **Data Isolation**: Strict multi-tenant row isolation across all database operations.
+
+---
+
+## 8. 📊 Success Metrics & Key Performance Indicators (KPIs)
+
+* **Cycle Time Reduction**: Decrease average time from feature prompt to production-ready PR from 5 days to < 4 hours.
+* **Specification Quality**: Zero unhandled critical edge cases in PRDs generated by the AI Clarification Agent.
+* **Review Accuracy**: > 95% alignment between VelocityAI compliance verdicts and senior engineer code approvals.
+* **Platform Availability**: 99.9% uptime for API route handlers and durable workflow consumers.

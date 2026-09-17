@@ -7,14 +7,14 @@ the Copilot repo-context pipeline, and the security model.
 > **One deployable.** VelocityAI is a single Next.js application. The "backend" is the
 > set of Route Handlers under `apps/web/app/api/**` plus the shared `@repo/trpc`
 > router. Frontend, API, webhooks, and the durable-workflow endpoint all serve from
-> the same origin (`https://VelocityAI.in`).
+> the same origin (`https://my-ai-code-reviewer.onrender.com`).
 
 ---
 
 ## 1. High-level shape
 
 ```text
-                          https://VelocityAI.in
+                  https://my-ai-code-reviewer.onrender.com
                                   │
    ┌───────────────┬──────────────┼───────────────┬────────────────┐
    │               │              │               │                │

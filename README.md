@@ -17,63 +17,19 @@ Turn messy feature requests into structured PRDs, engineering tasks, GitHub-conn
 PR reviews, an AI **Copilot** that drafts the code, fix loops, human approval, and
 shipped releases — end to end.
 
-[![Live](https://img.shields.io/badge/Live-VelocityAI.in-6366f1?style=for-the-badge&logo=vercel&logoColor=white)](https://VelocityAI.in)
-[![Demo Video](https://img.shields.io/badge/Demo_Video-Loom_Walkthrough-6366f1?style=for-the-badge&logo=loom&logoColor=white)](https://VelocityAI.in/demo)
+[![Live](https://img.shields.io/badge/Live-Render_App-46e3b7?style=for-the-badge&logo=render&logoColor=black)](https://my-ai-code-reviewer.onrender.com)
+[![Demo Video](https://img.shields.io/badge/Demo_Video-Loom_Walkthrough-6366f1?style=for-the-badge&logo=loom&logoColor=white)](https://my-ai-code-reviewer.onrender.com/demo)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Turborepo](https://img.shields.io/badge/Turborepo-monorepo-EF4444?style=for-the-badge&logo=turborepo)](https://turbo.build)
 
-**🌐 Production:** **<https://VelocityAI.in>** · **🎥 Demo Video:** **<https://VelocityAI.in/demo>**
+**🌐 Production:** **<https://my-ai-code-reviewer.onrender.com>**
+
 
 📖 [Architecture](./ARCHITECTURE.md) · 🤝 [Contributing](./CONTRIBUTING.md) · 🔐 [Security](./SECURITY.md)
 
 </div>
-
----
-
-## 🎥 Video Walkthrough (End-to-End Demo)
-
-> **Watch the 3-minute comprehensive tour of VelocityAI:**  
-> 👉 **[Click here to watch the full Loom / YouTube Demo Walkthrough](https://VelocityAI.in/demo)**
-
-| Timestamp | Milestone | Demonstrated Features |
-|:---|:---|:---|
-| **0:00 - 0:45** | **Product Discovery** | Natural-language intake form, AI clarification agent interactive Q&A |
-| **0:45 - 1:20** | **PRD & Tasks** | Durable Inngest PRD generation, approval, specialty-based task decomposition & Kanban board |
-| **1:20 - 2:05** | **GitHub Integration** | Automated webhook ingestion, Octokit PR review against PRD criteria, commit status checks |
-| **2:05 - 2:35** | **Fix Loop** | Finding resolution loop, blocking vs non-blocking severity, re-review trigger |
-| **2:35 - 3:00** | **Strict Release Gate** | Live checklist validation (4/4 requirements), human approval, ship to production |
-
----
-
-## 📑 Table of Contents
-
-1. [Video Walkthrough](#-video-walkthrough-end-to-end-demo)
-2. [Project Overview](#-project-overview)
-3. [The Core Workflow](#-the-core-workflow)
-4. [Tech Stack](#-tech-stack)
-5. [Architecture](#-architecture)
-6. [Monorepo Structure](#-monorepo-structure)
-7. [Backend Routes & URLs](#-backend-routes--urls)
-8. [tRPC API Surface](#-trpc-api-surface)
-9. [Inngest Workflow Explanation](#-inngest-workflow-explanation)
-10. [AI Features Implemented](#-ai-features-implemented)
-11. [AI Model Evaluation Benchmarks](#-ai-model-evaluation-benchmarks)
-12. [AI Copilot — build / fix / improve](#-ai-copilot--build--fix--improve)
-13. [GitHub Integration Setup](#-github-integration-setup)
-14. [Billing & Plans](#-billing--plans)
-15. [Authentication & Security](#-authentication--security)
-16. [Real-time Sync](#-real-time-sync)
-17. [Database Schema](#-database-schema)
-18. [Setup Instructions](#-setup-instructions)
-19. [Environment Variables](#-environment-variables)
-20. [Scripts & Commands](#-scripts--commands)
-21. [Testing & CI](#-testing--ci)
-22. [Deployment](#-deployment)
-23. [Further Documentation](#-further-documentation)
-
----
 
 ## 🎯 Project Overview
 
@@ -166,12 +122,12 @@ VelocityAI is a **single deployable Next.js application** backed by shared works
 packages. There is **no separate backend server** — the "backend" is the set of
 Next.js **Route Handlers** under `apps/web/app/api/**` plus the shared `@repo/trpc`
 router. This is why the production deployment exposes only one URL
-(**<https://VelocityAI.in>**): the frontend, the API, the webhooks, and the AI workflow
+(**<https://my-ai-code-reviewer.onrender.com>**): the frontend, the API, the webhooks, and the AI workflow
 endpoint are all served from that same origin.
 
 ```text
-                         https://VelocityAI.in
-                                 │
+                  https://my-ai-code-reviewer.onrender.com
+                                  │
         ┌────────────────────────┼─────────────────────────┐
         │                        │                          │
    React UI (App Router)   API Route Handlers          tRPC Router
@@ -261,23 +217,23 @@ VelocityAI/
 Because VelocityAI is a Next.js app, the **backend lives at the same domain as the
 frontend**. Every route below is a Next.js Route Handler (`app/api/**/route.ts`).
 
-> **Production base URL:** `https://VelocityAI.in`
+> **Production base URL:** `https://my-ai-code-reviewer.onrender.com`
 > **Local base URL:** `http://localhost:3000`
 > Prepend the base URL to any path below.
 
 | Method(s) | Path | Production URL | Purpose |
 |-----------|------|----------------|---------|
-| `GET` `POST` | `/api/auth/[...all]` | `https://VelocityAI.in/api/auth/*` | BetterAuth — sign-in/up, sessions, OAuth (GitHub & Google), organization endpoints |
-| `GET` `POST` | `/api/trpc/[trpc]` | `https://VelocityAI.in/api/trpc/*` | tRPC fetch handler — **all** typed app queries/mutations (e.g. `…/api/trpc/feature.create`) |
-| `GET` `POST` `PUT` | `/api/inngest` | `https://VelocityAI.in/api/inngest` | Inngest serve endpoint — registers & executes durable workflow functions |
-| `POST` | `/api/github/webhook` | `https://VelocityAI.in/api/github/webhook` | GitHub App webhook — verifies signature, caches PRs, enqueues AI review |
-| `GET` | `/api/github/callback` | `https://VelocityAI.in/api/github/callback` | GitHub App installation callback → hands off to `/github-connected` |
-| `POST` | `/api/pusher/auth` | `https://VelocityAI.in/api/pusher/auth` | Pusher private-channel authorization (verifies org membership) |
-| `POST` | `/api/razorpay/webhook` | `https://VelocityAI.in/api/razorpay/webhook` | Razorpay subscription webhook — verifies HMAC, updates plan & credits |
-| `POST` | `/api/webhooks/github` | `https://VelocityAI.in/api/webhooks/github` | Alias → re-exports the GitHub webhook handler |
-| `POST` | `/api/webhooks/razorpay` | `https://VelocityAI.in/api/webhooks/razorpay` | Alias → re-exports the Razorpay webhook handler |
-| `POST` | `/api/webhooks/gmail` | `https://VelocityAI.in/api/webhooks/gmail` | Placeholder (`{ ok: true }`) for a future email-intake integration |
-| `POST` | `/api/webhooks` | `https://VelocityAI.in/api/webhooks` | Generic health/ack stub (`{ ok: true }`) |
+| `GET` `POST` | `/api/auth/[...all]` | `https://my-ai-code-reviewer.onrender.com/api/auth/*` | BetterAuth — sign-in/up, sessions, OAuth (GitHub & Google), organization endpoints |
+| `GET` `POST` | `/api/trpc/[trpc]` | `https://my-ai-code-reviewer.onrender.com/api/trpc/*` | tRPC fetch handler — **all** typed app queries/mutations (e.g. `…/api/trpc/feature.create`) |
+| `GET` `POST` `PUT` | `/api/inngest` | `https://my-ai-code-reviewer.onrender.com/api/inngest` | Inngest serve endpoint — registers & executes durable workflow functions |
+| `POST` | `/api/github/webhook` | `https://my-ai-code-reviewer.onrender.com/api/github/webhook` | GitHub App webhook — verifies signature, caches PRs, enqueues AI review |
+| `GET` | `/api/github/callback` | `https://my-ai-code-reviewer.onrender.com/api/github/callback` | GitHub App installation callback → hands off to `/github-connected` |
+| `POST` | `/api/pusher/auth` | `https://my-ai-code-reviewer.onrender.com/api/pusher/auth` | Pusher private-channel authorization (verifies org membership) |
+| `POST` | `/api/razorpay/webhook` | `https://my-ai-code-reviewer.onrender.com/api/razorpay/webhook` | Razorpay subscription webhook — verifies HMAC, updates plan & credits |
+| `POST` | `/api/webhooks/github` | `https://my-ai-code-reviewer.onrender.com/api/webhooks/github` | Alias → re-exports the GitHub webhook handler |
+| `POST` | `/api/webhooks/razorpay` | `https://my-ai-code-reviewer.onrender.com/api/webhooks/razorpay` | Alias → re-exports the Razorpay webhook handler |
+| `POST` | `/api/webhooks/gmail` | `https://my-ai-code-reviewer.onrender.com/api/webhooks/gmail` | Placeholder (`{ ok: true }`) for a future email-intake integration |
+| `POST` | `/api/webhooks` | `https://my-ai-code-reviewer.onrender.com/api/webhooks` | Generic health/ack stub (`{ ok: true }`) |
 
 ### App (page) routes
 
@@ -770,13 +726,13 @@ pnpm test && pnpm check-types && pnpm lint && pnpm build
 
 ## 🚢 Deployment
 
-- **Production:** **<https://VelocityAI.in>** — a single Next.js deployment that serves the
+- **Production:** **<https://my-ai-code-reviewer.onrender.com>** — a single Next.js deployment that serves the
   UI, the tRPC API, all webhook handlers, and the Inngest endpoint from one origin.
-- Set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to `https://VelocityAI.in`, **leave
+- Set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to `https://my-ai-code-reviewer.onrender.com`, **leave
   `INNGEST_SERVE_ORIGIN` unset** (Inngest infers the origin), and provide the production
   keys for OpenAI, Inngest, the GitHub App, Razorpay, Pusher, and Resend.
-- Point the **GitHub App webhook** at `https://VelocityAI.in/api/github/webhook` and the
-  **Razorpay webhook** at `https://VelocityAI.in/api/razorpay/webhook`.
+- Point the **GitHub App webhook** at `https://my-ai-code-reviewer.onrender.com/api/github/webhook` and the
+  **Razorpay webhook** at `https://my-ai-code-reviewer.onrender.com/api/razorpay/webhook`.
 
 ---
 
