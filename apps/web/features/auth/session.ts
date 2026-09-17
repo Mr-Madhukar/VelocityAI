@@ -9,9 +9,13 @@ import { DEFAULT_AUTH_CALLBACK, SIGN_IN_PATH } from "./utils";
 
 // Plain server utilities — no "use server" so they can be called during rendering.
 export async function getServerSession() {
-  return auth.api.getSession({
-    headers: await headers(),
-  });
+  try {
+    return await auth.api.getSession({
+      headers: await headers(),
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function requireAuth(redirectTo = SIGN_IN_PATH) {
