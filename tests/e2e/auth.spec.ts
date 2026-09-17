@@ -21,6 +21,10 @@ test.describe("Authentication Journey", () => {
     await expect(githubBtn).toBeVisible();
     await expect(githubBtn).toBeEnabled();
 
+    // Wait for form hydration
+    const form = page.locator("form[data-hydrated='true']");
+    await expect(form).toBeVisible();
+
     // Verify Email inputs
     const emailInput = page.getByLabel(/^email$/i);
     const passwordInput = page.getByLabel(/^password$/i);
@@ -38,15 +42,19 @@ test.describe("Authentication Journey", () => {
     await expect(submitBtn).toBeEnabled();
 
     // Back link to home
-    const backLink = page.getByRole("link", { name: /back to velocityai/i });
+    const backLink = page.getByRole("link", { name: /back to velocityai/i }).first();
     await expect(backLink).toBeVisible();
     await backLink.click();
-    await page.waitForURL(/.*:3000\/?$/, { timeout: 10_000 });
-    await expect(page).toHaveURL(/.*:3000\/?$/);
+    await page.waitForURL((url) => url.pathname === "/", { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("password visibility toggle works as expected", async ({ page }) => {
     await page.goto("/sign-in");
+
+    // Wait for form hydration
+    const form = page.locator("form[data-hydrated='true']");
+    await expect(form).toBeVisible();
 
     const passwordInput = page.getByLabel(/^password$/i);
     await passwordInput.fill("SuperSecret123!");
@@ -56,13 +64,13 @@ test.describe("Authentication Journey", () => {
 
     // Locate the toggle button by role and aria-label
     const toggleButton = page.getByRole("button", { name: /show password/i });
-    if (await toggleButton.isVisible()) {
-      await toggleButton.click();
-      await expect(passwordInput).toHaveAttribute("type", "text");
+    await expect(toggleButton).toBeVisible();
+    await toggleButton.click();
+    await expect(passwordInput).toHaveAttribute("type", "text");
 
-      const hideButton = page.getByRole("button", { name: /hide password/i });
-      await hideButton.click();
-      await expect(passwordInput).toHaveAttribute("type", "password");
-    }
+    const hideButton = page.getByRole("button", { name: /hide password/i });
+    await expect(hideButton).toBeVisible();
+    await hideButton.click();
+    await expect(passwordInput).toHaveAttribute("type", "password");
   });
 });

@@ -15,11 +15,11 @@ test.describe("Smoke Suite @smoke", () => {
     await expect(brand).toBeVisible();
 
     // Verify header navigation links
-    await expect(header.getByRole("link", { name: /^demo$/i })).toBeVisible();
-    await expect(header.getByRole("link", { name: /^how it works$/i })).toBeVisible();
-    await expect(header.getByRole("link", { name: /^features$/i })).toBeVisible();
-    await expect(header.getByRole("link", { name: /^cli$/i })).toBeVisible();
-    await expect(header.getByRole("link", { name: /^pricing$/i })).toBeVisible();
+    await expect(header.getByRole("link", { name: /^demo$/i }).first()).toBeVisible();
+    await expect(header.getByRole("link", { name: /^how it works$/i }).first()).toBeVisible();
+    await expect(header.getByRole("link", { name: /^features$/i }).first()).toBeVisible();
+    await expect(header.getByRole("link", { name: /^cli$/i }).first()).toBeVisible();
+    await expect(header.getByRole("link", { name: /^pricing$/i }).first()).toBeVisible();
 
     // Verify Call-to-Action buttons in header
     await expect(header.getByRole("link", { name: /^sign in$/i })).toBeVisible();

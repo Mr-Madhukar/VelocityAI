@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -28,13 +28,18 @@ function SubmitButton({ disabled }: Readonly<{ disabled: boolean }>) {
 
 export function EmailSignInForm({ callbackUrl }: Readonly<{ callbackUrl?: string }>) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="grid gap-4">
-      <form ref={formRef} action={signInWithEmail} className="grid gap-3">
+      <form ref={formRef} action={signInWithEmail} data-hydrated={mounted ? "true" : "false"} className="grid gap-3">
         {callbackUrl && (
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
         )}

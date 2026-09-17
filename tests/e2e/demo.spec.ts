@@ -10,11 +10,9 @@ test.describe("Interactive Demo Experience", () => {
 
     // Verify view switcher buttons in the demo sidebar (e.g. Features, PRD, Tasks)
     const featuresButton = demoSection.getByRole("button", { name: /features/i }).first();
-    if (await featuresButton.isVisible()) {
-      await featuresButton.click();
-      // Verify state changes or active indicator
-      await expect(featuresButton).toBeVisible();
-    }
+    await expect(featuresButton).toBeVisible();
+    await featuresButton.click();
+    await expect(featuresButton).toBeVisible();
   });
 
   test("CLI interactive snippet section displays velocityai commands", async ({ page }) => {

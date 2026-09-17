@@ -875,6 +875,7 @@ export function DemoDashboard({
                     <button
                       key={item.label}
                       type="button"
+                      aria-label={item.label}
                       disabled={!clickable}
                       onClick={() => item.view && setView(item.view)}
                       className={cn(

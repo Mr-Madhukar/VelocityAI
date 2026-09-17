@@ -8,7 +8,17 @@ type ViewTransitionDocument = Document & {
   startViewTransition?: (callback: () => void) => { ready: Promise<void> };
 };
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+function renderThemeIcon(mounted: boolean, isDark: boolean) {
+  if (!mounted) {
+    return <span className="size-4" aria-hidden />;
+  }
+  if (isDark) {
+    return <Sun className="size-4" />;
+  }
+  return <Moon className="size-4" />;
+}
+
+export function ThemeToggle({ className = "" }: Readonly<{ className?: string }>) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -16,6 +26,8 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   useEffect(() => setMounted(true), []);
 
   const isDark = resolvedTheme === "dark";
+  const targetMode = isDark ? "light" : "dark";
+  const ariaLabel = mounted ? `Toggle theme, switch to ${targetMode} mode` : "Toggle theme";
 
   const toggle = useCallback(() => {
     const next = isDark ? "light" : "dark";
@@ -66,16 +78,11 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <button
       ref={btnRef}
       type="button"
-      aria-label={mounted ? `Switch to ${isDark ? "light" : "dark"} mode` : "Toggle theme"}
+      aria-label={ariaLabel}
       onClick={toggle}
-      className={`grid size-9 shrink-0 place-items-center border border-border bg-foreground/[0.03] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground ${className}`}
+      className={`grid size-9 shrink-0 place-items-center border border-border bg-foreground/3 text-muted-foreground transition-colors hover:bg-foreground/6 hover:text-foreground ${className}`}
     >
-      {/* Avoid hydration flash: render a placeholder until mounted */}
-      {mounted ? (
-        isDark ? <Sun className="size-4" /> : <Moon className="size-4" />
-      ) : (
-        <span className="size-4" aria-hidden />
-      )}
+      {renderThemeIcon(mounted, isDark)}
     </button>
   );
 }
