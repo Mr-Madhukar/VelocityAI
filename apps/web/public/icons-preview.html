@@ -32,7 +32,7 @@
       background: rgba(9,9,11,.4); backdrop-filter: blur(12px);
     }
     .card img, .card object { width: 32px; height: 32px; }
-    .card .label { margin-top: 12px; font-size: 11px; color: #94a3b8; word-break: break-word; }
+    .card .label { margin-top: 12px; font-size: 11px; color: #94a3b8; overflow-wrap: break-word; }
     /* tint variants via CSS mask so currentColor-style coloring is shown */
     .tinted { width:32px; height:32px; display:inline-block; background: var(--c); -webkit-mask: var(--m) center/contain no-repeat; mask: var(--m) center/contain no-repeat; }
     .mark-tile { width: 64px; height: 64px; }
@@ -47,7 +47,7 @@
 
   <h2>App mark</h2>
   <div class="row">
-    <object class="mark-tile" type="image/svg+xml" data="/icons/VelocityAI-mark.svg"></object>
+    <object class="mark-tile" type="image/svg+xml" data="/icons/VelocityAI-mark.svg">VelocityAI mark</object>
     <div class="card">
       <span class="tinted" style="--c: var(--cyan); --m: url(/icons/VelocityAI-mark-mono.svg)"></span>
       <div class="label">mono / cyan</div>
@@ -66,9 +66,9 @@
     <div class="sw" style="background:#7dd3fc">cyan-300</div>
     <div class="sw" style="background:#22d3ee">cyan-400</div>
     <div class="sw" style="background:#34d399">emerald-400</div>
-    <div class="sw" style="background:#f97316;color:#fff">orange-500</div>
+    <div class="sw" style="background:#f97316">orange-500</div>
     <div class="sw" style="background:#fbbf24">amber-400</div>
-    <div class="sw" style="background:#f87171;color:#fff">red-400</div>
+    <div class="sw" style="background:#f87171">red-400</div>
   </div>
 
   <script>
