@@ -19,11 +19,11 @@ export function AssistantMark({
   state = "idle",
   size = 44,
   className,
-}: {
+}: Readonly<{
   state?: AgentState;
   size?: number;
   className?: string;
-}) {
+}>) {
   const reduceMotion = useReducedMotion();
   const gradId = useId();
   const thinking = state === "thinking";
@@ -31,12 +31,13 @@ export function AssistantMark({
   const sweepDur = thinking ? "1.4s" : "4.5s";
   const pulseDur = thinking ? "1.2s" : "3.4s";
 
-  const chevronAnim = (baseOpacity: number) =>
-    reduceMotion
-      ? undefined
-      : thinking
-        ? { opacity: [baseOpacity * 0.35, 1, baseOpacity * 0.35], y: [1.5, -1.5, 1.5] }
-        : { opacity: baseOpacity, y: 0 };
+  function getChevronAnim(baseOpacity: number) {
+    if (reduceMotion) return undefined;
+    if (thinking) {
+      return { opacity: [baseOpacity * 0.35, 1, baseOpacity * 0.35], y: [1.5, -1.5, 1.5] };
+    }
+    return { opacity: baseOpacity, y: 0 };
+  }
 
   return (
     <motion.div
@@ -89,12 +90,12 @@ export function AssistantMark({
           >
             <motion.path
               d="M17 39 L32 24 L47 39"
-              animate={chevronAnim(1)}
+              animate={getChevronAnim(1)}
               transition={{ repeat: thinking ? Infinity : 0, duration: 1.3, ease: "easeInOut" }}
             />
             <motion.path
               d="M17 49 L32 34 L47 49"
-              animate={chevronAnim(0.45)}
+              animate={getChevronAnim(0.45)}
               transition={{
                 repeat: thinking ? Infinity : 0,
                 duration: 1.3,

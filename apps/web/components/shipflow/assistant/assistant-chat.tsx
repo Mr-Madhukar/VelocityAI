@@ -26,11 +26,11 @@ export function AssistantChat({
   activeConversationId,
   onConversationChange,
   onThinkingChange,
-}: {
+}: Readonly<{
   activeConversationId: string | null;
   onConversationChange: (id: string | null) => void;
   onThinkingChange: (thinking: boolean) => void;
-}) {
+}>) {
   const utils = trpc.useUtils();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -55,7 +55,7 @@ export function AssistantChat({
       return;
     }
     if (loadedRef.current === activeConversationId) return;
-    if (convQuery.data && convQuery.data.conversation.id === activeConversationId) {
+    if (convQuery.data?.conversation.id === activeConversationId) {
       setMessages(
         convQuery.data.messages.map((m) => ({
           id: m.id,
@@ -137,7 +137,7 @@ export function AssistantChat({
                   type="button"
                   onClick={() => submit(s)}
                   disabled={newChatBlocked}
-                  className="rounded-lg border border-border bg-foreground/[0.03] px-3 py-2 text-left text-xs text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+                  className="rounded-lg border border-border bg-foreground/3 px-3 py-2 text-left text-xs text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
                 >
                   {s}
                 </button>
@@ -158,7 +158,7 @@ export function AssistantChat({
                   <div className="mt-0.5 shrink-0">
                     <AssistantMark state="idle" size={26} />
                   </div>
-                  <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-border bg-foreground/[0.03] px-3.5 py-2.5">
+                  <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-border bg-foreground/3 px-3.5 py-2.5">
                     <Markdown content={m.content} />
                   </div>
                 </div>
@@ -177,7 +177,7 @@ export function AssistantChat({
       {/* Composer */}
       <div className="border-t border-border/60 px-1 pt-3">
         {newChatBlocked ? (
-          <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-400/[0.06] px-3 py-2">
+          <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-400/6 px-3 py-2">
             <p className="text-xs text-amber-600 dark:text-amber-300">{quota?.reason}</p>
             <a
               href="/billing"
@@ -200,7 +200,7 @@ export function AssistantChat({
             rows={1}
             disabled={newChatBlocked}
             placeholder={newChatBlocked ? "Monthly chat limit reached" : "Ask about your features, projects, tasks…"}
-            className="max-h-32 min-h-[2.25rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none disabled:opacity-60"
+            className="max-h-32 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none disabled:opacity-60"
           />
           <button
             type="button"
