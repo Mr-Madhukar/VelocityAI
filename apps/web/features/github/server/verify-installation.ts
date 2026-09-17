@@ -46,7 +46,8 @@ export async function verifyInstallationOwnership(
       installation_id: installationId,
     });
     account = data.account as { id?: number; login?: string; type?: string } | null;
-  } catch {
+  } catch (err) {
+    console.error(`verifyInstallationOwnership failed for installation ${installationId}:`, err);
     return { ok: false, error: "That GitHub App installation doesn't exist." };
   }
 
