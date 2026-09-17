@@ -9,7 +9,7 @@ test.describe("Interactive Demo Experience", () => {
     await expect(demoSection).toBeVisible();
 
     // Verify view switcher buttons in the demo sidebar (e.g. Features, PRD, Tasks)
-    const featuresButton = demoSection.getByRole("button", { name: /features/i }).first();
+    const featuresButton = demoSection.locator("aside").getByRole("button", { name: /features/i });
     await expect(featuresButton).toBeVisible();
     await featuresButton.click();
     await expect(featuresButton).toBeVisible();
