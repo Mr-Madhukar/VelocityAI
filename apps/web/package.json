@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --webpack --port 3000",
     "build": "next build --webpack",
-    "start": "next start",
+    "start": "node start.mjs",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit",
     "test": "tsx --test \"{features,lib}/**/*.test.ts\""

@@ -11,6 +11,14 @@ jobs:
     name: Playwright Cross-Browser Tests
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      SKIP_ENV_VALIDATION: "true"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/velocityai_ci"
+      BETTER_AUTH_SECRET: "ci-test-better-auth-secret-32-chars-long"
+      BETTER_AUTH_URL: "http://localhost:3000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      OPENROUTER_API_KEY: "sk-or-v1-ci-placeholder-key"
 
     steps:
       - name: Checkout repository
@@ -34,20 +42,9 @@ jobs:
         run: pnpm exec playwright install --with-deps
 
       - name: Build Web Application
-        env:
-          SKIP_ENV_VALIDATION: "true"
-          BETTER_AUTH_SECRET: "ci-test-better-auth-secret-32-chars-long"
-          BETTER_AUTH_URL: "http://localhost:3000"
-          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
         run: pnpm build
 
       - name: Run Playwright E2E Tests
-        env:
-          CI: "true"
-          SKIP_ENV_VALIDATION: "true"
-          BETTER_AUTH_SECRET: "ci-test-better-auth-secret-32-chars-long"
-          BETTER_AUTH_URL: "http://localhost:3000"
-          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
         run: pnpm test:e2e
 
       - name: Upload Playwright Test Report & Artifacts

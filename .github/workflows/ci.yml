@@ -10,6 +10,14 @@ jobs:
   verify:
     name: Test, typecheck, lint, build
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      SKIP_ENV_VALIDATION: "true"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/velocityai_ci"
+      BETTER_AUTH_SECRET: "ci-test-better-auth-secret-32-chars-long"
+      BETTER_AUTH_URL: "http://localhost:3000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+      OPENROUTER_API_KEY: "sk-or-v1-ci-placeholder-key"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
