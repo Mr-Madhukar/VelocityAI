@@ -1,3 +1,5 @@
+"use client";
+
 import { CheckCircle2 } from "lucide-react";
 
 import { billingPlans, getPlanDetails, type BillingPlan } from "@repo/services/shipflow/billing";
@@ -5,10 +7,9 @@ import { billingPlans, getPlanDetails, type BillingPlan } from "@repo/services/s
 import { UpgradeButton } from "~/features/billing/components/upgrade-button";
 import { CancelButton } from "~/features/billing/components/cancel-button";
 import { PageHeader } from "~/components/shipflow/ui-kit";
+import { BillingPageSkeleton } from "~/components/shipflow/page-skeletons";
 import { cn } from "~/lib/utils";
-import { api } from "~/trpc/server";
-
-export const dynamic = "force-dynamic";
+import { trpc } from "~/trpc/client";
 
 const INR = new Intl.NumberFormat("en-IN");
 
@@ -108,8 +109,13 @@ function PlanAction({
   return <p className="text-center text-xs text-muted-foreground">No charge</p>;
 }
 
-export default async function BillingPage() {
-  const data = await api.billing.usage.query().catch(() => null);
+export default function BillingPage() {
+  const { data, isLoading } = trpc.billing.usage.useQuery();
+
+  if (isLoading) {
+    return <BillingPageSkeleton />;
+  }
+
   const currentPlan = (data?.plan ?? "free") as BillingPlan;
   const details = getPlanDetails(currentPlan);
   const usage = data?.usage ?? {

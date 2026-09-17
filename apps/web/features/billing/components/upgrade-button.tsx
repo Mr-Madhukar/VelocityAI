@@ -32,11 +32,11 @@ export function UpgradeButton({
   plan,
   label,
   highlight,
-}: {
+}: Readonly<{
   plan: "pro" | "scale";
   label: string;
   highlight?: boolean;
-}) {
+}>) {
   const [isPending, startTransition] = useTransition();
   const [scriptReady, setScriptReady] = useState(false);
 
@@ -75,6 +75,7 @@ export function UpgradeButton({
   return (
     <>
       <Script
+        id="razorpay-checkout"
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
         onReady={() => setScriptReady(true)}
