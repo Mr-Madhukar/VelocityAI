@@ -1,53 +1,74 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["**/.env.*local"],
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
   "globalEnv": [
-    "DATABASE_URL",
-    "NEXT_PUBLIC_APP_URL",
+    "NODE_ENV",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "OPENROUTER_API_KEY",
+    "OPENAI_MODEL",
+    "AGENT_KEY_ENCRYPTION_SECRET",
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
-    "BETTER_AUTH_API_KEY",
-    "GITHUB_CLIENT_ID",
-    "GITHUB_CLIENT_SECRET",
-    "GITHUB_APP_NAME",
+    "DATABASE_URL",
     "GITHUB_APP_ID",
     "GITHUB_APP_PRIVATE_KEY",
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
     "GITHUB_WEBHOOK_SECRET",
-    "OPENROUTER_API_KEY",
-    "PINECONE_API_KEY",
-    "PINECONE_INDEX",
-    "NEXT_PUBLIC_RAZORPAY_KEY_ID",
-    "RAZORPAY_KEY_ID",
-    "RAZORPAY_KEY_SECRET",
-    "RAZORPAY_PLAN_ID",
-    "RAZORPAY_WEBHOOK_SECRET",
     "INNGEST_EVENT_KEY",
     "INNGEST_SIGNING_KEY",
-    "INNGEST_DEV"
+    "INNGEST_DEV",
+    "INNGEST_SERVE_ORIGIN",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_GITHUB_APP_NAME",
+    "NEXT_PUBLIC_RAZORPAY_KEY_ID",
+    "PUSHER_APP_ID",
+    "PUSHER_KEY",
+    "PUSHER_SECRET",
+    "PUSHER_CLUSTER",
+    "NEXT_PUBLIC_PUSHER_KEY",
+    "NEXT_PUBLIC_PUSHER_CLUSTER",
+    "RAZORPAY_KEY_ID",
+    "RAZORPAY_KEY_SECRET",
+    "RAZORPAY_PRO_PLAN_ID",
+    "RAZORPAY_SCALE_PLAN_ID",
+    "RAZORPAY_WEBHOOK_SECRET",
+    "RESEND_API_KEY",
+    "RESEND_FROM_EMAIL",
+    "SHIPFLOW_DEMO_AUTH",
+    "SKIP_ENV_VALIDATION",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "VERCEL_URL",
+    "PORT"
   ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^lint"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": []
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "db:generate": {
-      "cache": false
-    },
+    "db:generate": {},
+    "db:migrate": {},
     "db:push": {
       "cache": false
-    },
-    "db:migrate": {
-      "cache": false
-    },
-    "test": {
-      "dependsOn": ["^build"]
     }
   }
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "pull_request" ALTER COLUMN "feature_id" DROP NOT NULL;

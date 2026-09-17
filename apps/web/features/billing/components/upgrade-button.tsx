@@ -1,124 +1,97 @@
-/**
- * Client button that opens Razorpay Checkout for the Pro plan.
- *
- * Razorpay Checkout is a hosted payment modal loaded from their CDN script.
- * We create the subscription on the server first, then pass `subscription_id`
- * to Checkout so Razorpay can collect payment and fire webhooks to activate Pro.
- *
- * @module features/billing/components/upgrade-button
- */
-
 "use client";
 
-import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import { statusButtonClass } from "@/features/dashboard/lib/status-styles";
-import { startProSubscription, verifyProSubscription } from "@/lib/actions/billing";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { cn } from "~/lib/utils";
 
-/** Minimal type for the global `window.Razorpay` constructor from checkout.js. */
-type RazorpayCheckout = new (options: Record<string, unknown>) => {
+import { createCheckoutSubscription } from "../server/subscription";
+
+type RazorpayCheckout = {
   open: () => void;
+};
+
+type RazorpayOptions = {
+  key: string;
+  subscription_id: string;
+  name: string;
+  description: string;
+  theme?: { color?: string };
+  handler?: () => void;
+  modal?: { ondismiss?: () => void };
 };
 
 declare global {
   interface Window {
-    Razorpay?: RazorpayCheckout;
+    Razorpay?: new (options: RazorpayOptions) => RazorpayCheckout;
   }
 }
 
-/** Official Razorpay Checkout script — loads the payment modal in the browser. */
-const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+export function UpgradeButton({
+  plan,
+  label,
+  highlight,
+}: {
+  plan: "pro" | "scale";
+  label: string;
+  highlight?: boolean;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [scriptReady, setScriptReady] = useState(false);
 
-/**
- * Renders "Upgrade to Pro" and launches Razorpay Checkout on click.
- *
- * @returns Button plus lazy-loaded Razorpay script tag.
- */
-export function UpgradeButton() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  function launch() {
+    startTransition(async () => {
+      const result = await createCheckoutSubscription(plan);
 
-  async function handleUpgrade() {
-    const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    if (!key) {
-      toast.error("Razorpay is not configured yet.");
-      return;
-    }
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
 
-    if (!window.Razorpay) {
-      toast.error("Checkout is still loading, please try again in a moment.");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Server creates the Razorpay subscription and returns its id for Checkout.
-      const { subscriptionId } = await startProSubscription();
+      if (!scriptReady || !window.Razorpay) {
+        toast.message("Checkout is still loading — please try again in a moment.");
+        return;
+      }
 
       const checkout = new window.Razorpay({
-        key,
-        subscription_id: subscriptionId,
-        name: "Chai Code Reviewer",
-        description: "Pro plan — unlimited AI reviews",
-        handler: async (response: {
-          razorpay_payment_id: string;
-          razorpay_subscription_id: string;
-          razorpay_signature: string;
-        }) => {
-          setLoading(true);
-          const promise = verifyProSubscription({
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_subscription_id: response.razorpay_subscription_id,
-            razorpay_signature: response.razorpay_signature,
-          });
-
-          toast.promise(promise, {
-            loading: "Activating your Pro plan...",
-            success: () => {
-              router.refresh();
-              return "Your account is now Pro! Enjoy unlimited reviews.";
-            },
-            error: (err) => {
-              return err instanceof Error ? err.message : "Failed to activate Pro plan.";
-            },
-          });
-
-          try {
-            await promise;
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setLoading(false);
-          }
+        key: result.keyId,
+        subscription_id: result.subscriptionId,
+        name: "VelocityAI",
+        description: `${label} plan subscription`,
+        theme: { color: "#22d3ee" },
+        handler: () => {
+          toast.success("Payment received — your plan will update shortly.");
+        },
+        modal: {
+          ondismiss: () => toast.message("Checkout closed."),
         },
       });
 
       checkout.open();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Could not start checkout.";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
     <>
-      <Script src={RAZORPAY_SCRIPT_URL} strategy="lazyOnload" />
-      <Button
-        onClick={handleUpgrade}
-        disabled={loading}
-        className={cn(statusButtonClass.success)}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+        onReady={() => setScriptReady(true)}
+      />
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={launch}
+        className={cn(
+          "w-full rounded-md py-2 text-sm font-semibold transition disabled:opacity-50",
+          highlight
+            ? "bg-primary text-primary-foreground hover:bg-primary"
+            : "border border-foreground/10 text-foreground/80 hover:border-foreground/20",
+        )}
       >
-        {loading ? "Opening checkout…" : "Upgrade to Pro"}
-      </Button>
+        {isPending ? "Preparing checkout…" : `Upgrade to ${label}`}
+      </button>
     </>
   );
 }

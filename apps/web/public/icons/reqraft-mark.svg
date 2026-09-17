@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <linearGradient id="rqGrad" x1="16" y1="48" x2="48" y2="16" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+    <filter id="rqGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark glass tile -->
+  <rect x="1" y="1" width="62" height="62" rx="16" fill="#0a0a0a" stroke="rgba(255,255,255,0.10)"/>
+
+  <!-- Rising delivery chevrons + node -->
+  <g filter="url(#rqGlow)" stroke="url(#rqGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 38 L32 24 L46 38"/>
+    <path d="M18 47 L32 33 L46 47" opacity="0.5"/>
+  </g>
+  <circle cx="32" cy="18" r="2.6" fill="url(#rqGrad)" filter="url(#rqGlow)"/>
+</svg>

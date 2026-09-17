@@ -1,9 +1,8 @@
-/**
- * @module lib/auth-client
- * @description Browser-side Better Auth client for React components.
- *
- * Points to the canonical auth client defined in packages/auth/client
- * which supports workspaces/organizations.
- */
+"use client";
 
-export { authClient } from "@shipflow/auth/client";
+import { createAuthClient } from "better-auth/react";
+import { deviceAuthorizationClient, organizationClient } from "better-auth/client/plugins";
+
+export const authClient = createAuthClient({
+  plugins: [organizationClient(), deviceAuthorizationClient()],
+});

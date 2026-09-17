@@ -1,0 +1,32 @@
+{
+  "name": "@repo/services",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./shipflow/agents": "./shipflow/agents.ts",
+    "./shipflow/billing": "./shipflow/billing.ts",
+    "./shipflow/code-review": "./shipflow/code-review.ts",
+    "./shipflow/demo": "./shipflow/demo.ts",
+    "./shipflow/github": "./shipflow/github.ts",
+    "./shipflow/prd-document": "./shipflow/prd-document.ts",
+    "./shipflow/repo-index": "./shipflow/repo-index.ts",
+    "./shipflow/tech-stacks": "./shipflow/tech-stacks.ts",
+    "./shipflow/workflow": "./shipflow/workflow.ts"
+  },
+  "scripts": {
+    "test": "tsx --test \"shipflow/*.test.ts\"",
+    "check-types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "dotenv-cli": "^11.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@repo/logger": "workspace:*",
+    "zod": "^4.3.5"
+  }
+}

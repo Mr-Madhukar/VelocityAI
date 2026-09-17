@@ -1,70 +1,67 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-node_modules/
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Dependencies
+node_modules
+.pnp
+.pnp.js
 
-# testing
-coverage/
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# next.js
+# Testing
+coverage
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Turbo
+.turbo
+
+# Vercel
+.vercel
+
+# Build Outputs
 .next/
 out/
+build
+dist
 
-# production & build outputs
-build/
-dist/
 
-# misc
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-*.pem
-
-# debug
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-.pnpm-debug.log*
 
-# env files
-.env
-.env*.local
-.env.local
+# Misc
+.DS_Store
+*.pem
+PLAN.md
+learning
+_backup_old_code/
 
-# turbo
-.turbo/
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# IDEs
+# Local IDE & AI Agent folders
 .vscode/
-.idea/
+.cursor/
+.agents/
+.claude/
+scratch/
+skills-lock.json
 
-# prisma generated files at root (if any)
-/lib/generated/prisma
-
-# markdown files
-*.md
-!README.md
-
-
-# secret files
+# Sensitive secrets & tunnels
 ngrok.yml
-myflow-ai.2026-06-30.private-key.pem
+*.pem
+
+# Scratch, dumps & local test scripts
+get_features.js
+req.json
+req500.json
+test-inngest.ts
+apps/web/test-inngest.ts
+
+# Raw prompt notes
+requirement.md

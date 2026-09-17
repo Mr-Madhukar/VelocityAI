@@ -1,36 +1,39 @@
 {
-  "name": "shipflow-ai",
-  "version": "0.1.0",
+  "name": "velocityai",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k \"turbo dev\" \"pnpm run tunnel\" \"npx inngest-cli@latest dev\"",
-    "tunnel": "ngrok start --config ngrok.yml shipflow",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "test": "turbo test",
-    "db:generate": "turbo db:generate",
-    "db:push": "turbo db:push",
-    "db:migrate": "turbo db:migrate",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "predev": "taskkill /F /IM ngrok.exe 2>nul || exit 0"
+    "build": "dotenv -- turbo build",
+    "dev": "dotenv -- turbo dev",
+    "dev:all": "dotenv -- concurrently --names \"turbo,ngrok\" --prefix-colors \"cyan,yellow\" \"turbo dev\" \"ngrok http --domain=setback-datebook-uniformed.ngrok-free.dev 3000\"",
+    "dev:tunnel": "dotenv -- ngrok http --domain=setback-datebook-uniformed.ngrok-free.dev 3000",
+    "db:generate": "dotenv -- turbo db:generate",
+    "db:migrate": "dotenv -- turbo db:migrate",
+    "db:push": "dotenv -- turbo db:push",
+    "test": "turbo run test",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0",
-    "concurrently": "^10.0.3",
-    "turbo": "^2.5.0",
-    "typescript": "^5"
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.15.3",
+    "concurrently": "^9.1.2",
+    "prettier": "^3.7.4",
+    "turbo": "^2.7.2",
+    "typescript": "5.9.2"
   },
-  "packageManager": "pnpm@11.0.9",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/engines",
-      "protobufjs",
-      "sharp",
-      "unrs-resolver"
-    ]
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
-    "@better-auth/infra": "^0.3.4"
-  }
+    "@better-auth/infra": "^0.3.2",
+    "dotenv-cli": "^11.0.0"
+  },
+  "version": "0.0.1"
 }

@@ -1,18 +1,33 @@
-version: "3.9"
-
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: shipflow-postgres
+    image: postgres:15
     restart: unless-stopped
+    container_name: shipflow-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shipflow
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_USER: shipflow
-      POSTGRES_PASSWORD: shipflow_secret
-      POSTGRES_DB: shipflow
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  inngest:
+    image: inngest/inngest:latest
+    restart: unless-stopped
+    container_name: shipflow-inngest
+    command: inngest dev -u http://host.docker.internal:3000/api/inngest --no-poll
+    ports:
+      - "8288:8288"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 
 volumes:
-  pgdata:
+  pg_data:

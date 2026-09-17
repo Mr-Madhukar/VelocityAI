@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VelocityAI Icon Set — Preview</title>
+  <style>
+    :root {
+      --cyan: #7dd3fc; --cyan-bright: #22d3ee; --emerald: #34d399; --orange: #f97316; --amber: #fbbf24; --red: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 48px 32px; min-height: 100vh;
+      background: #090b10;
+      background-image:
+        linear-gradient(rgba(125,211,252,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125,211,252,.05) 1px, transparent 1px),
+        radial-gradient(circle at 20% 10%, rgba(34,211,238,.10), transparent 30%),
+        radial-gradient(circle at 85% 5%, rgba(16,185,129,.08), transparent 32%);
+      background-size: 56px 56px, 56px 56px, 100% 100%, 100% 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #e2e8f0;
+    }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -.4px; margin: 0 0 4px; }
+    h1 span { color: var(--cyan); }
+    p.sub { color: #64748b; font-size: 14px; margin: 0 0 40px; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin: 36px 0 16px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    .card {
+      width: 132px; padding: 20px 12px; text-align: center;
+      border: 1px solid rgba(255,255,255,.10); border-radius: 16px;
+      background: rgba(9,9,11,.4); backdrop-filter: blur(12px);
+    }
+    .card img, .card object { width: 32px; height: 32px; }
+    .card .label { margin-top: 12px; font-size: 11px; color: #94a3b8; word-break: break-word; }
+    /* tint variants via CSS mask so currentColor-style coloring is shown */
+    .tinted { width:32px; height:32px; display:inline-block; background: var(--c); -webkit-mask: var(--m) center/contain no-repeat; mask: var(--m) center/contain no-repeat; }
+    .mark-tile { width: 64px; height: 64px; }
+    .row { display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+    .swatches { display:flex; gap:10px; flex-wrap:wrap; margin-top: 8px; }
+    .sw { width:64px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,.1); display:flex; align-items:flex-end; padding:4px; font-size:9px; color:#0a0a0a; font-weight:600; }
+  </style>
+</head>
+<body>
+  <h1><span>VelocityAI</span> Icon Set</h1>
+  <p class="sub">Starter icons in the project theme · dark glass · cyan→emerald gradient · orange accent</p>
+
+  <h2>App mark</h2>
+  <div class="row">
+    <object class="mark-tile" type="image/svg+xml" data="/icons/VelocityAI-mark.svg"></object>
+    <div class="card">
+      <span class="tinted" style="--c: var(--cyan); --m: url(/icons/VelocityAI-mark-mono.svg)"></span>
+      <div class="label">mono / cyan</div>
+    </div>
+    <div class="card">
+      <span class="tinted" style="--c: #fff; --m: url(/icons/VelocityAI-mark-mono.svg)"></span>
+      <div class="label">mono / white</div>
+    </div>
+  </div>
+
+  <h2>Feature icons (tinted with the state palette)</h2>
+  <div class="grid" id="grid"></div>
+
+  <h2>Palette</h2>
+  <div class="swatches">
+    <div class="sw" style="background:#7dd3fc">cyan-300</div>
+    <div class="sw" style="background:#22d3ee">cyan-400</div>
+    <div class="sw" style="background:#34d399">emerald-400</div>
+    <div class="sw" style="background:#f97316;color:#fff">orange-500</div>
+    <div class="sw" style="background:#fbbf24">amber-400</div>
+    <div class="sw" style="background:#f87171;color:#fff">red-400</div>
+  </div>
+
+  <script>
+    const icons = [
+      { file: "feature-idea",  label: "Feature / idea",  color: "var(--cyan)" },
+      { file: "prd-doc",       label: "PRD document",    color: "var(--cyan)" },
+      { file: "tasks-board",   label: "Tasks / kanban",  color: "var(--amber)" },
+      { file: "review-shield", label: "Review",          color: "var(--emerald)" },
+      { file: "github-pr",     label: "GitHub PR",       color: "var(--orange)" },
+      { file: "ship-send",     label: "Ship",            color: "var(--emerald)" },
+    ];
+    const grid = document.getElementById("grid");
+    for (const i of icons) {
+      grid.insertAdjacentHTML("beforeend", `
+        <div class="card">
+          <span class="tinted" style="--c:${i.color}; --m:url(/icons/${i.file}.svg)"></span>
+          <div class="label">${i.label}<br><span style="color:#475569">${i.file}.svg</span></div>
+        </div>`);
+    }
+  </script>
+</body>
+</html>

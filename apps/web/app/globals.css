@@ -1,126 +1,141 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@source "../node_modules/streamdown/dist/*.js";
-@source "../node_modules/@streamdown/code/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Square shape language — no rounded corners (better-auth style) */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+
+  /* Type — Geist (sans) + Geist Mono, Regular-led.
+     Landing accents: Space Grotesk (display headings) + Instrument Serif (special text). */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-display: var(--font-space-grotesk), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-mono);
-  --font-heading: var(--font-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-glow-primary: var(--glow-primary);
+  --color-glow-success: var(--glow-success);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ---- Light — soft off-white shades, never pure white ---- */
 :root {
-  --font-geist-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.553 0.195 38.402);
-  --primary-foreground: oklch(0.98 0.016 73.684);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.553 0.195 38.402);
-  --accent-foreground: oklch(0.98 0.016 73.684);
+  --radius: 0rem;
+  --background: oklch(0.965 0.004 250);
+  --foreground: oklch(0.22 0.02 250);
+  --card: oklch(0.995 0.002 250);
+  --card-foreground: oklch(0.22 0.02 250);
+  --popover: oklch(0.995 0.002 250);
+  --popover-foreground: oklch(0.22 0.02 250);
+  --primary: oklch(0.69 0.18 48);
+  --primary-foreground: oklch(0.20 0.03 50);
+  --secondary: oklch(0.93 0.005 250);
+  --secondary-foreground: oklch(0.22 0.02 250);
+  --muted: oklch(0.93 0.005 250);
+  --muted-foreground: oklch(0.47 0.02 250);
+  --accent: oklch(0.95 0.02 60);
+  --accent-foreground: oklch(0.22 0.02 250);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.845 0.143 164.978);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.596 0.145 163.225);
-  --chart-4: oklch(0.508 0.118 165.612);
-  --chart-5: oklch(0.432 0.095 166.913);
-  --radius: 0;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.646 0.222 41.116);
-  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067);
+  --success: oklch(0.58 0.14 162);
+  --success-foreground: oklch(0.99 0 0);
+  --glow-primary: oklch(0.69 0.18 48 / 9%);
+  --glow-success: oklch(0.58 0.14 162 / 7%);
+  --grid-line: oklch(0.22 0.02 250 / 6%);
+  --border: oklch(0.87 0.008 250);
+  --input: oklch(0.87 0.008 250);
+  --ring: oklch(0.69 0.18 48);
+  --chart-1: oklch(0.69 0.18 48);
+  --chart-2: oklch(0.58 0.14 162);
+  --chart-3: oklch(0.75 0.15 70);
+  --chart-4: oklch(0.55 0.13 230);
+  --chart-5: oklch(0.50 0.14 270);
+  --sidebar: oklch(0.95 0.004 250);
+  --sidebar-foreground: oklch(0.22 0.02 250);
+  --sidebar-primary: oklch(0.69 0.18 48);
+  --sidebar-primary-foreground: oklch(0.20 0.03 50);
+  --sidebar-accent: oklch(0.93 0.005 250);
+  --sidebar-accent-foreground: oklch(0.22 0.02 250);
+  --sidebar-border: oklch(0.87 0.008 250);
+  --sidebar-ring: oklch(0.69 0.18 48);
 }
 
+/* ---- Dark (default mode) ---- */
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.47 0.157 37.304);
-  --primary-foreground: oklch(0.98 0.016 73.684);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.47 0.157 37.304);
-  --accent-foreground: oklch(0.98 0.016 73.684);
+  --background: oklch(0.15 0.006 240);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.19 0.008 240);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.18 0.008 240);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.77 0.17 58);
+  --primary-foreground: oklch(0.20 0.03 50);
+  --secondary: oklch(0.27 0.008 240);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.27 0.008 240);
+  --muted-foreground: oklch(0.70 0.02 230);
+  --accent: oklch(0.28 0.03 60);
+  --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.72 0.15 162);
+  --success-foreground: oklch(0.18 0.02 160);
+  --glow-primary: oklch(0.77 0.17 58 / 14%);
+  --glow-success: oklch(0.72 0.15 162 / 10%);
+  --grid-line: oklch(1 0 0 / 6%);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --chart-1: oklch(0.845 0.143 164.978);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.596 0.145 163.225);
-  --chart-4: oklch(0.508 0.118 165.612);
-  --chart-5: oklch(0.432 0.095 166.913);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.705 0.213 47.604);
-  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.77 0.17 58 / 55%);
+  --chart-1: oklch(0.77 0.17 58);
+  --chart-2: oklch(0.72 0.15 162);
+  --chart-3: oklch(0.80 0.15 75);
+  --chart-4: oklch(0.70 0.13 250);
+  --chart-5: oklch(0.72 0.14 290);
+  --sidebar: oklch(0.17 0.008 240);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.77 0.17 58);
+  --sidebar-primary-foreground: oklch(0.20 0.03 50);
+  --sidebar-accent: oklch(0.27 0.008 240);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.552 0.016 285.938);
+  --sidebar-ring: oklch(0.77 0.17 58 / 55%);
 }
 
 @layer base {
@@ -128,69 +143,264 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  button {
     cursor: pointer;
   }
-  html {
-    @apply font-mono;
+  /* Consistent, good-looking disabled state for every button (base <Button> and
+     raw inline buttons alike). `filter` desaturates the brand color so a
+     disabled button reads as clearly inactive/muted instead of a bright,
+     half-transparent version of itself. `opacity` here is a floor for buttons
+     that don't set their own; those using `disabled:opacity-*` keep theirs and
+     still get the desaturation. */
+  button:disabled,
+  a[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.6;
+    filter: grayscale(0.55);
   }
 }
 
-/* ─── Animations for sign-in & dashboard redesign ─── */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+/* Respect reduced-motion globally for CSS animations/transitions
+   (framer-motion is handled separately via useReducedMotion). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-@keyframes float-delayed {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-14px); }
+/* Theme switch: circular reveal via the View Transitions API. The new theme
+   snapshot sits on top and is clipped open by the WAAPI clip-path animation in
+   theme-toggle.tsx; the old snapshot stays static beneath it (no cross-fade),
+   so the incoming theme wipes over the outgoing one from the toggle button. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 0;
+}
+::view-transition-new(root) {
+  z-index: 1;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+/* Lenis smooth scroll */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+/* Bento tile mini-viz animations (auto-disabled by the reduced-motion guard) */
+@keyframes viz-bar {
+  0%, 100% { transform: scaleX(0.5); }
+  50% { transform: scaleX(1); }
+}
+@keyframes viz-scan {
+  0% { transform: translateY(-1px); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(38px); opacity: 0; }
+}
+@keyframes viz-flow {
+  0% { left: 0; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+@keyframes viz-rise {
+  0% { transform: translateY(12px); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(-16px); opacity: 0; }
+}
+@keyframes viz-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes viz-draw {
+  0% { stroke-dashoffset: 48; }
+  55% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes viz-appear {
+  0%, 12% { opacity: 0; transform: translateY(3px); }
+  40%, 100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes viz-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes slide-up {
-  0% { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: translateY(0); }
+/* Flowing dashed connector — data ingest toward the hub */
+.flow-dash {
+  stroke-dasharray: 3 7;
+  animation: flow-dash 1.1s linear infinite;
+}
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+/* Faint square blueprint grid — theme-aware via --grid-line */
+.app-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
-.animate-float-delayed {
-  animation: float-delayed 7s ease-in-out infinite;
-  animation-delay: 1s;
+.shipflow-grid {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    radial-gradient(circle at 20% 15%, var(--glow-primary), transparent 28%),
+    radial-gradient(circle at 80% 10%, var(--glow-success), transparent 30%);
+  background-size:
+    56px 56px,
+    56px 56px,
+    100% 100%,
+    100% 100%;
+  mask-image: linear-gradient(to bottom, black 0%, black 68%, transparent 100%);
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
+.shipflow-message {
+  animation: shipflow-message-in 700ms ease both;
 }
 
-.animate-slide-up {
-  animation: slide-up 0.5s ease-out both;
+.shipflow-message-delay {
+  animation-delay: 450ms;
 }
 
-.animate-gradient-shift {
-  background-size: 200% 200%;
-  animation: gradient-shift 8s ease infinite;
+.shipflow-message-delay-2 {
+  animation-delay: 900ms;
 }
 
-/* Card glow on hover */
-.card-glow {
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+@keyframes shipflow-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.card-glow:hover {
-  box-shadow: 0 0 20px oklch(0.47 0.157 37.304 / 0.15), 0 0 40px oklch(0.47 0.157 37.304 / 0.05);
+
+/* ---- Landing page: premium neon cards + route-map visuals ---- */
+
+/* Feature card — hover frosts it into glass over the page background,
+   with a hairline top highlight and a calm amber border. No gradients. */
+.neon-card {
+  position: relative;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--card) 72%, transparent);
+  -webkit-backdrop-filter: blur(0);
+  backdrop-filter: blur(0);
+  transition:
+    box-shadow 0.45s ease,
+    border-color 0.45s ease,
+    background 0.45s ease,
+    backdrop-filter 0.45s ease,
+    -webkit-backdrop-filter 0.45s ease;
+}
+.neon-card:hover {
+  border-color: color-mix(in oklab, var(--primary) 40%, var(--border));
+  background: color-mix(in oklab, var(--card) 42%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  backdrop-filter: blur(14px) saturate(1.25);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in oklab, var(--foreground) 10%, transparent),
+    0 0 18px var(--glow-primary);
+}
+
+/* Hero orbital rings — parent spins, chips counter-spin to stay upright */
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* Footer wordmark — a light sheen sweeps along the outlined brand letters */
+.wordmark-outline {
+  -webkit-text-stroke: 1px var(--border);
+  color: transparent;
+}
+.wordmark-sheen {
+  -webkit-text-stroke: 1.2px var(--primary);
+  color: transparent;
+  mask-image: linear-gradient(100deg, transparent 42%, black 50%, transparent 58%);
+  -webkit-mask-image: linear-gradient(100deg, transparent 42%, black 50%, transparent 58%);
+  mask-size: 260% 100%;
+  -webkit-mask-size: 260% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  animation: wordmark-sheen 7s ease-in-out infinite;
+}
+@keyframes wordmark-sheen {
+  0% {
+    mask-position: 130% 0;
+    -webkit-mask-position: 130% 0;
+  }
+  55%,
+  100% {
+    mask-position: -130% 0;
+    -webkit-mask-position: -130% 0;
+  }
+}
+
+/* Scrollable but chrome-free — used by the Agent conversation + file/diff
+   viewers where a visible scrollbar would clutter the reading surface. */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chromium/WebKit */
+}
+
+/* The app shell's content pane (<main data-app-main>) and everything inside it
+   scroll without visible scrollbars — the wheel scrolls whatever scrollable
+   region is under the pointer. Catch-all so nested viewers (code, diffs,
+   textareas) never need to opt in individually. */
+[data-app-main],
+[data-app-main] * {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+[data-app-main]::-webkit-scrollbar,
+[data-app-main] *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chromium/WebKit */
+}
+
+/* Dotted route-map background for the how-it-works panel */
+.dot-map {
+  background-image:
+    radial-gradient(var(--grid-line) 1px, transparent 1.5px),
+    radial-gradient(circle at 15% 20%, var(--glow-primary), transparent 32%),
+    radial-gradient(circle at 88% 80%, var(--glow-success), transparent 30%);
+  background-size:
+    24px 24px,
+    100% 100%,
+    100% 100%;
 }

@@ -1,130 +1,112 @@
-/**
- * Reads a user's subscription plan and status from the database.
- *
- * Razorpay webhooks update raw fields (`plan`, `subscriptionStatus`, `subscriptionRenewsAt`).
- * This module translates those into a clean `UserSubscription` object for the UI.
- *
- * @module features/billing/server/subscription
- */
+"use server";
 
-import "server-only";
+import { db, eq } from "@repo/database";
+import { subscriptions } from "@repo/database/schema";
+import type { BillingPlan } from "@repo/services/shipflow/billing";
 
-import type {
-  SubscriptionPlan,
-  UserSubscription,
-} from "@/features/dashboard/lib/types";
-import { prisma } from "@/lib/db";
-import { getReviewsThisMonth } from "./usage";
-import { getActiveWorkspaceForUser } from "./workspace-helper";
+import { requireAuth } from "@/features/auth/session";
 
-/** Normalizes the string stored in Prisma to our `SubscriptionPlan` union. */
-function getPlanFromDb(plan: string): SubscriptionPlan {
-  if (plan === "pro") {
-    return "pro";
+import { getRazorpayInstance } from "../lib/razorpay";
+
+type PaidPlan = Exclude<BillingPlan, "free">;
+
+// Razorpay subscriptions require a finite number of billing cycles — there is no
+// true "infinite". 120 monthly cycles (10 years) acts as effectively
+// indefinite auto-renewal; the customer keeps getting charged each month until
+// they cancel, well before this horizon is reached.
+const BILLING_CYCLE_COUNT = 120;
+
+// Each paid plan maps to a Razorpay plan id configured in the environment.
+function planEnvId(plan: PaidPlan): string | undefined {
+  switch (plan) {
+    case "pro":
+      return process.env.RAZORPAY_PRO_PLAN_ID;
+    case "scale":
+      return process.env.RAZORPAY_SCALE_PLAN_ID;
   }
-  return "free";
 }
 
-/**
- * Maps database subscription fields to a user-facing status.
- *
- * Pro users who canceled but are still inside the paid period stay `active`
- * until `subscriptionRenewsAt` passes — they keep Pro features until then.
- */
-function getStatusFromDb(
-  plan: SubscriptionPlan,
-  subscriptionStatus: string | null,
-  subscriptionRenewsAt: Date | null
-): UserSubscription["status"] {
-  if (plan !== "pro") {
-    return "active";
+export async function createCheckoutSubscription(plan: PaidPlan) {
+  const session = await requireAuth();
+  const organizationId = session.session.activeOrganizationId;
+
+  if (!organizationId) {
+    return { ok: false as const, error: "Select an organization before upgrading." };
   }
 
-  if (subscriptionStatus === "canceled") {
-    if (subscriptionRenewsAt && subscriptionRenewsAt > new Date()) {
-      return "active";
-    }
-    return "canceled";
-  }
+  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+  const planId = planEnvId(plan);
 
-  if (subscriptionStatus === "pending") {
-    return "trialing";
-  }
-
-  if (subscriptionStatus === "active") {
-    return "active";
-  }
-
-  return "canceled";
-}
-
-/** Pro features only apply when plan is pro AND status is still active. */
-function getEffectivePlan(
-  plan: SubscriptionPlan,
-  status: UserSubscription["status"]
-): SubscriptionPlan {
-  if (plan === "pro" && status === "active") {
-    return "pro";
-  }
-
-  return "free";
-}
-
-/**
- * Loads the current subscription snapshot for a user's active workspace.
- *
- * @param userId - The user whose plan and renewal date we need.
- * @returns `UserSubscription` with effective plan, status, and optional `renewsAt` ISO string.
- */
-export async function getUserSubscription(
-  userId: string
-): Promise<UserSubscription> {
-  const workspace = await getActiveWorkspaceForUser(userId);
-
-  if (!workspace) {
+  if (!keyId || !planId) {
     return {
-      plan: "free",
-      status: "active",
-      renewsAt: null,
-      usage: {
-        reviewsUsed: 0,
-        reposConnected: 0,
-      },
+      ok: false as const,
+      error: `Billing isn't configured for the ${plan} plan yet. Set NEXT_PUBLIC_RAZORPAY_KEY_ID and the plan id.`,
     };
   }
 
-  const dbPlan = getPlanFromDb(workspace.plan);
-  const status = getStatusFromDb(
-    dbPlan,
-    workspace.subscriptionStatus,
-    workspace.subscriptionRenewsAt
-  );
-  const plan = getEffectivePlan(dbPlan, status);
-
-  let renewsAt: string | null = null;
-  if (workspace.subscriptionRenewsAt) {
-    const d = new Date(workspace.subscriptionRenewsAt);
-    if (!isNaN(d.getTime())) {
-      renewsAt = d.toISOString();
-    }
-  }
-
-  // Fetch usage statistics
-  const reviewsUsed = await getReviewsThisMonth(userId);
-  const reposConnected = await prisma.project.count({
-    where: {
-      workspaceId: workspace.id,
-      repoFullName: { not: null },
+  const razorpay = getRazorpayInstance();
+  const subscription = await razorpay.subscriptions.create({
+    plan_id: planId,
+    total_count: BILLING_CYCLE_COUNT,
+    customer_notify: 1,
+    // The webhook reconciles by these notes — keep plan + org in sync with the row.
+    notes: {
+      userId: session.user.id,
+      organizationId,
+      plan,
     },
   });
 
+  // Stash the pending Razorpay subscription id so the webhook can match this org
+  // even if its notes are dropped. Ensure a row exists first.
+  const [existing] = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(eq(subscriptions.organizationId, organizationId));
+
+  if (existing) {
+    await db
+      .update(subscriptions)
+      .set({ razorpaySubscriptionId: subscription.id, updatedAt: new Date() })
+      .where(eq(subscriptions.organizationId, organizationId));
+  } else {
+    await db.insert(subscriptions).values({
+      id: crypto.randomUUID(),
+      organizationId,
+      plan: "free",
+      status: "active",
+      razorpaySubscriptionId: subscription.id,
+    });
+  }
+
   return {
+    ok: true as const,
+    subscriptionId: subscription.id,
+    keyId,
     plan,
-    status,
-    renewsAt,
-    usage: {
-      reviewsUsed,
-      reposConnected,
-    },
   };
+}
+
+export async function cancelCheckoutSubscription() {
+  const session = await requireAuth();
+  const organizationId = session.session.activeOrganizationId;
+
+  if (!organizationId) {
+    return { ok: false as const, error: "Select an organization first." };
+  }
+
+  const [row] = await db
+    .select({ razorpaySubscriptionId: subscriptions.razorpaySubscriptionId })
+    .from(subscriptions)
+    .where(eq(subscriptions.organizationId, organizationId));
+
+  if (!row?.razorpaySubscriptionId) {
+    return { ok: false as const, error: "No active subscription to cancel." };
+  }
+
+  const razorpay = getRazorpayInstance();
+  // Cancel at cycle end so the org keeps access until the period they paid for.
+  await razorpay.subscriptions.cancel(row.razorpaySubscriptionId, true);
+
+  return { ok: true as const };
 }

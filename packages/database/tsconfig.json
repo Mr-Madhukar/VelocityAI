@@ -1,0 +1,5 @@
+{
+  "extends": ["@repo/typescript-config/node.json"],
+  "include": ["index.ts", "schema.ts", "env.ts", "models/**/*", "drizzle.config.ts"],
+  "exclude": ["test-review.ts", "node_modules"]
+}

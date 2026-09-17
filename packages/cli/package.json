@@ -1,0 +1,47 @@
+{
+  "name": "velocityai",
+  "version": "0.3.0",
+  "description": "VelocityAI CLI — drive your AI product delivery pipeline from the terminal.",
+  "type": "module",
+  "bin": {
+    "velocityai": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "velocityai",
+    "cli",
+    "prd",
+    "code-review",
+    "ai"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "check-types": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "prepublishOnly": "tsup"
+  },
+  "dependencies": {
+    "@trpc/client": "^11.8.1",
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@repo/trpc": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@trpc/server": "^11.8.1",
+    "@types/node": "^22.15.3",
+    "tsup": "^8.3.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
