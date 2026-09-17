@@ -80,9 +80,9 @@ export function LandingPricing() {
       <div className="mx-auto w-full max-w-6xl">
       <div className="mx-auto max-w-2xl text-center">
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Pricing</p>
-        <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl tracking-tight sm:text-4xl">
+        <h2 className="mt-4 font-display text-3xl tracking-tight sm:text-4xl">
           Start free.{" "}
-          <span className="font-[family-name:var(--font-serif)] italic text-foreground/60">
+          <span className="font-serif italic text-foreground/60">
             Pay as you ship more.
           </span>
         </h2>
@@ -102,7 +102,7 @@ export function LandingPricing() {
             transition={{ duration: 0.5, delay: i * 0.08 }}
             className={cn(
               "neon-card relative flex flex-col p-7",
-              plan.highlighted && "border-primary/50 shadow-[0_0_30px_var(--glow-primary)] lg:-mt-4 lg:mb-[-1px]",
+              plan.highlighted && "border-primary/50 shadow-[0_0_30px_var(--glow-primary)] lg:-mt-4 lg:-mb-px",
             )}
           >
             {plan.highlighted ? (
@@ -127,7 +127,7 @@ export function LandingPricing() {
             <p className="mt-2.5 font-mono text-xs leading-relaxed text-muted-foreground">{plan.tagline}</p>
 
             {/* credit meter */}
-            <div className="mt-6 border border-border bg-foreground/[0.02] p-3">
+            <div className="mt-6 border border-border bg-foreground/2 p-3">
               <div className="flex items-center justify-between font-mono text-[9.5px] uppercase tracking-widest">
                 <span className="text-muted-foreground">AI review credits</span>
                 <span className={plan.highlighted ? "text-primary" : "text-foreground/70"}>
@@ -160,7 +160,7 @@ export function LandingPricing() {
                 "group mt-7 inline-flex h-11 items-center justify-center gap-2 border px-5 text-sm font-medium transition-colors",
                 plan.highlighted
                   ? "border-primary bg-primary text-primary-foreground hover:bg-transparent hover:text-foreground"
-                  : "border-border bg-foreground/[0.03] text-foreground hover:bg-foreground/[0.06]",
+                  : "border-border bg-foreground/3 text-foreground hover:bg-foreground/6",
               )}
             >
               {plan.cta}

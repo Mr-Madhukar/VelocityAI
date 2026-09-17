@@ -31,11 +31,11 @@ export function ProductDemo() {
         className="relative"
       >
         {/* soft halo behind the window — kept subtle */}
-        <div className="pointer-events-none absolute -inset-8 -z-10 bg-[var(--glow-primary)] opacity-30 blur-[90px]" />
+        <div className="pointer-events-none absolute -inset-8 -z-10 bg-glow-primary opacity-30 blur-[90px]" />
 
         <div className="overflow-hidden border border-border bg-card/80 backdrop-blur-md">
           {/* chrome: traffic lights + browser tabs */}
-          <div className="flex items-end gap-1 border-b border-border bg-foreground/[0.04] px-3 pt-2 sm:px-4">
+          <div className="flex items-end gap-1 border-b border-border bg-foreground/4 px-3 pt-2 sm:px-4">
             <div className="mb-2.5 mr-2 flex items-center gap-1.5 self-center sm:mr-3">
               <span className="size-2.5 rounded-full bg-destructive/60" />
               <span className="size-2.5 rounded-full bg-amber-400/70" />
@@ -82,7 +82,7 @@ export function ProductDemo() {
                     "relative -mb-px flex min-w-0 items-center gap-2 border px-3 py-2 font-mono text-[10.5px] transition-colors sm:px-4",
                     active
                       ? "border-border border-b-transparent bg-card text-foreground"
-                      : "border-transparent text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground/80",
+                      : "border-transparent text-muted-foreground hover:bg-foreground/4 hover:text-foreground/80",
                   )}
                 >
                   {active && (
