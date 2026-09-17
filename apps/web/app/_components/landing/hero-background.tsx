@@ -34,7 +34,7 @@ function palette(): Palette {
       };
 }
 
-export default function HeroBackground({ className = "" }: { className?: string }) {
+export default function HeroBackground({ className = "" }: Readonly<{ className?: string }>) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -193,7 +193,7 @@ export default function HeroBackground({ className = "" }: { className?: string 
       geo.dispose();
       mat.dispose();
       renderer.dispose();
-      host.removeChild(renderer.domElement);
+      renderer.domElement.remove();
     };
   }, []);
 

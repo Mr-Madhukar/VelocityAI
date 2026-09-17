@@ -105,7 +105,7 @@ export function DemoTerminal({ running }: { running: boolean }) {
   return (
     <div
       ref={scrollRef}
-      className="h-[560px] overflow-y-auto p-5 text-left font-mono text-[12px] leading-relaxed sm:h-[620px] sm:text-[12.5px]"
+      className="h-140 overflow-y-auto p-5 text-left font-mono text-[12px] leading-relaxed sm:h-155 sm:text-[12.5px]"
     >
       {SCRIPT.slice(0, pos.line + 1).map((line, i) => (
         <LineView key={i} line={line} chars={i < pos.line ? line.text.length : pos.chars} />

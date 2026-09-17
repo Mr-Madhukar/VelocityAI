@@ -120,14 +120,14 @@ function Orb({
   dimmed,
   setActive,
   reduceMotion,
-}: {
+}: Readonly<{
   feature: Feature;
   index: number;
   active: boolean;
   dimmed: boolean;
   setActive: (id: string | null) => void;
   reduceMotion: boolean;
-}) {
+}>) {
   const Icon = feature.icon;
   const towardCenter = feature.side === "left";
 
@@ -221,7 +221,7 @@ function Orb({
               <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary">
                 {feature.tag}
               </p>
-              <p className="mt-2 font-[family-name:var(--font-display)] text-sm font-medium text-foreground">
+              <p className="mt-2 font-display text-sm font-medium text-foreground">
                 {feature.title}
               </p>
               <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -300,7 +300,7 @@ export function HeroFeatureStrip() {
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 backdrop-blur-sm transition-colors",
                 isActive
-                  ? "border-primary/50 bg-primary/[0.08] text-primary shadow-[0_0_16px_var(--glow-primary)]"
+                  ? "border-primary/50 bg-primary/8 text-primary shadow-[0_0_16px_var(--glow-primary)]"
                   : "border-border bg-background/55 text-muted-foreground hover:border-primary/35 hover:text-foreground",
               )}
             >
@@ -322,7 +322,7 @@ export function HeroFeatureStrip() {
             className="mx-auto mt-4 max-w-md border border-primary/25 bg-background/70 p-4 text-left shadow-[0_0_24px_var(--glow-primary)] backdrop-blur-xl"
           >
             <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary">{current.tag}</p>
-            <p className="mt-2 font-[family-name:var(--font-display)] text-sm font-medium text-foreground">
+            <p className="mt-2 font-display text-sm font-medium text-foreground">
               {current.title}
             </p>
             <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">

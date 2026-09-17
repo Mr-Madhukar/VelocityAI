@@ -28,9 +28,9 @@ import { cn } from "@/lib/utils";
  * even and each column is hand-balanced by card height.
  */
 
-function Fig({ tag, children }: { tag: string; children: React.ReactNode }) {
+function Fig({ tag, children }: Readonly<{ tag: string; children: React.ReactNode }>) {
   return (
-    <div className="relative mt-4 overflow-hidden border border-border bg-foreground/[0.02] p-3.5">
+    <div className="relative mt-4 overflow-hidden border border-border bg-foreground/2 p-3.5">
       <span className="pointer-events-none absolute right-2.5 top-2 font-mono text-[8.5px] uppercase tracking-[0.2em] text-muted-foreground/45">
         {tag}
       </span>
@@ -99,7 +99,7 @@ function VizScore() {
         </svg>
         <div className="absolute inset-0 grid place-items-center">
           <div className="text-center">
-            <p className="font-[family-name:var(--font-display)] text-lg leading-none text-foreground">92</p>
+            <p className="font-display text-lg leading-none text-foreground">92</p>
             <p className="font-mono text-[7px] uppercase tracking-widest text-muted-foreground">score</p>
           </div>
         </div>
@@ -283,10 +283,10 @@ function VizShare() {
   return (
     <div>
       <div className="flex gap-1.5">
-        <span className="flex flex-1 items-center justify-center gap-1.5 border border-border bg-foreground/[0.04] px-2 py-1.5 font-mono text-[8.5px] uppercase tracking-widest text-foreground/85">
+        <span className="flex flex-1 items-center justify-center gap-1.5 border border-border bg-foreground/4 px-2 py-1.5 font-mono text-[8.5px] uppercase tracking-widest text-foreground/85">
           <Download className="size-2.5" /> PDF
         </span>
-        <span className="flex flex-1 items-center justify-center gap-1.5 border border-primary/40 bg-primary/[0.06] px-2 py-1.5 font-mono text-[8.5px] uppercase tracking-widest text-primary">
+        <span className="flex flex-1 items-center justify-center gap-1.5 border border-primary/40 bg-primary/6 px-2 py-1.5 font-mono text-[8.5px] uppercase tracking-widest text-primary">
           <Share2 className="size-2.5" /> Share link
         </span>
       </div>
@@ -299,7 +299,7 @@ function VizShare() {
 
 function VizGithub() {
   return (
-    <svg viewBox="0 0 220 74" className="h-[68px] w-full" fill="none">
+    <svg viewBox="0 0 220 74" className="h-17 w-full" fill="none">
       <line x1="24" y1="68" x2="24" y2="6" className="stroke-border" strokeWidth="2" />
       <circle cx="24" cy="58" r="3" className="fill-muted-foreground/40" />
       <circle cx="24" cy="34" r="3" className="fill-muted-foreground/40" />
@@ -450,7 +450,7 @@ const COLUMNS_SM: string[][] = [
   ["prd.gen", "prompt.copy", "npm.VelocityAI", "gh.sync", "jobs.durable"],
 ];
 
-function Card({ card, delay }: { card: CardDef; delay: number }) {
+function Card({ card, delay }: Readonly<{ card: CardDef; delay: number }>) {
   const Icon = card.icon;
   return (
     <motion.div
@@ -461,10 +461,10 @@ function Card({ card, delay }: { card: CardDef; delay: number }) {
       className="neon-card p-5"
     >
       <div className="flex items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center border border-border bg-foreground/[0.04] text-primary">
+        <span className="grid size-9 shrink-0 place-items-center border border-border bg-foreground/4 text-primary">
           {card.brand ? <SiGithub className="size-4 text-foreground" /> : Icon ? <Icon className="size-4" /> : null}
         </span>
-        <p className="font-[family-name:var(--font-display)] text-[15px] font-medium">{card.title}</p>
+        <p className="font-display text-[15px] font-medium">{card.title}</p>
       </div>
       <p className="mt-3 font-mono text-xs leading-relaxed text-muted-foreground">{card.body}</p>
       <Fig tag={card.tag}>{card.viz}</Fig>
@@ -472,7 +472,7 @@ function Card({ card, delay }: { card: CardDef; delay: number }) {
   );
 }
 
-function Wall({ columns, className }: { columns: string[][]; className: string }) {
+function Wall({ columns, className }: Readonly<{ columns: string[][]; className: string }>) {
   return (
     <div className={cn("mt-10 gap-4", className)}>
       {columns.map((col, ci) => (
@@ -493,9 +493,9 @@ export function FeatureBento() {
       <div className="mx-auto w-full max-w-6xl">
       <div className="max-w-2xl">
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-primary">Everything included</p>
-        <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl tracking-tight sm:text-4xl">
+        <h2 className="mt-4 font-display text-3xl tracking-tight sm:text-4xl">
           Not just a chat box —{" "}
-          <span className="font-[family-name:var(--font-serif)] italic text-foreground/60">
+          <span className="font-serif italic text-foreground/60">
             a delivery system.
           </span>
         </h2>
@@ -514,7 +514,7 @@ export function FeatureBento() {
       <Wall columns={COLUMNS_LG} className="hidden grid-cols-3 lg:grid" />
 
       {/* quiet proof line */}
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 border border-border bg-foreground/[0.02] px-6 py-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 border border-border bg-foreground/2 px-6 py-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
         <span className="flex items-center gap-2">
           <GitPullRequestArrow className="size-3 text-primary" /> Reviews on every commit
         </span>

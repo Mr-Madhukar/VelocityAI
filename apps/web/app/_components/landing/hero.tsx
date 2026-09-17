@@ -38,7 +38,7 @@ const steps = [
 
 export function LandingHero() {
   return (
-    <section className="relative isolate flex min-h-[100svh] flex-col justify-center overflow-hidden pb-56 pt-28">
+    <section className="relative isolate flex min-h-svh flex-col justify-center overflow-hidden pb-56 pt-28">
       {/* interactive particle field — runs to the horizon at the very top,
           stays visible at the bottom so the demo window sits on it */}
       <div
@@ -69,10 +69,10 @@ export function LandingHero() {
 
         <motion.h1
           variants={fadeUp}
-          className="mx-auto mt-8 max-w-3xl font-[family-name:var(--font-display)] text-5xl leading-[1.04] tracking-tight sm:text-7xl"
+          className="mx-auto mt-8 max-w-3xl font-display text-5xl leading-[1.04] tracking-tight sm:text-7xl"
         >
           Ship exactly{" "}
-          <span className="font-[family-name:var(--font-serif)] italic text-foreground/60">
+          <span className="font-serif italic text-foreground/60">
             what was asked.
           </span>
         </motion.h1>
@@ -95,7 +95,7 @@ export function LandingHero() {
           </Link>
           <Link
             href="/sign-in?callbackUrl=/reviews"
-            className="inline-flex h-11 items-center gap-2 border border-border bg-background/60 px-5 text-sm font-medium text-foreground backdrop-blur-sm transition-colors hover:bg-foreground/[0.06]"
+            className="inline-flex h-11 items-center gap-2 border border-border bg-background/60 px-5 text-sm font-medium text-foreground backdrop-blur-sm transition-colors hover:bg-foreground/6"
           >
             Watch a PR review
             <GitPullRequestArrow className="size-4" />
