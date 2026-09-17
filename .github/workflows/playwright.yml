@@ -1,0 +1,61 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    name: Playwright Cross-Browser Tests
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers with OS dependencies
+        run: pnpm exec playwright install --with-deps
+
+      - name: Build Web Application
+        env:
+          SKIP_ENV_VALIDATION: "true"
+          BETTER_AUTH_SECRET: "ci-test-better-auth-secret-32-chars-long"
+          BETTER_AUTH_URL: "http://localhost:3000"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+        run: pnpm build
+
+      - name: Run Playwright E2E Tests
+        env:
+          CI: "true"
+          SKIP_ENV_VALIDATION: "true"
+          BETTER_AUTH_SECRET: "ci-test-better-auth-secret-32-chars-long"
+          BETTER_AUTH_URL: "http://localhost:3000"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+        run: pnpm test:e2e
+
+      - name: Upload Playwright Test Report & Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
