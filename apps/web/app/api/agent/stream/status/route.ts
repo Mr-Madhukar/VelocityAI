@@ -11,6 +11,7 @@ import { getRun, runStoreAvailable } from "@/features/agent/server/run-store";
 export async function GET(req: Request) {
   const auth = await requireOrg();
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 401 });
+  
 
   if (!runStoreAvailable()) {
     return Response.json({ error: "The agent run store isn't configured." }, { status: 503 });

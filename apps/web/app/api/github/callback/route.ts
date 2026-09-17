@@ -15,6 +15,8 @@ export function GET(request: Request) {
     }
   }
 
+
+  
   // Forward the CSRF state we passed to GitHub so the opener can verify it.
   const state = url.searchParams.get("state");
   if (state) {

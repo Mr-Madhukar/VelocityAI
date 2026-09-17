@@ -100,7 +100,7 @@ export default function NewFeaturePage() {
         title="New feature request"
         description="Start with the messy real-world ask. VelocityAI will turn it into a structured delivery workflow."
       />
-      <div className="max-w-3xl rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+      <div className="max-w-3xl rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
         <div className="grid gap-5">
           <div className="grid gap-2">
             <Label htmlFor="title" className="text-foreground/80">Feature title <RequiredMark /></Label>
@@ -131,7 +131,7 @@ export default function NewFeaturePage() {
               {creatingProject ? (
                 <div className="flex items-center gap-2">
                   <Input
-                    autoFocus
+                    ref={(el) => el?.focus()}
                     value={newProjectName}
                     onChange={(event) => setNewProjectName(event.target.value)}
                     onKeyDown={(event) => {

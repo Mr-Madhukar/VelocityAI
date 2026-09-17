@@ -18,6 +18,27 @@ import {
 // invocation stays under this ceiling and the client continues the run.
 export const maxDuration = 300;
 
+function createStreamSender(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+): (text: string) => void {
+  return (text: string) => {
+    try {
+      controller.enqueue(encoder.encode(text));
+    } catch {
+      /* stream already cancelled */
+    }
+  };
+}
+
+function closeControllerSafely(controller: ReadableStreamDefaultController<Uint8Array>): void {
+  try {
+    controller.close();
+  } catch {
+    /* already closed by cancellation */
+  }
+}
+
 /**
  * Starts an agent run and streams the plan JSON as raw text — a flat HTTP
  * stream, deliberately NOT an RSC streamable value (those chain every update
@@ -63,13 +84,7 @@ export async function POST(req: Request) {
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (text: string) => {
-        try {
-          controller.enqueue(encoder.encode(text));
-        } catch {
-          /* stream already cancelled */
-        }
-      };
+      const send = createStreamSender(controller, encoder);
 
       const outcome = await produceSegment({
         runId,
@@ -89,11 +104,7 @@ export async function POST(req: Request) {
         if (!req.signal.aborted) send(ERROR_SENTINEL + (outcome.error ?? "The agent run failed."));
       }
 
-      try {
-        controller.close();
-      } catch {
-        /* already closed by cancellation */
-      }
+      closeControllerSafely(controller);
     },
   });
 
@@ -117,13 +128,7 @@ function streamWithoutStore(deps: AgentRunDeps, model: string, clientSignal: Abo
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (text: string) => {
-        try {
-          controller.enqueue(encoder.encode(text));
-        } catch {
-          /* stream already cancelled */
-        }
-      };
+      const send = createStreamSender(controller, encoder);
       try {
         for await (const delta of result.textStream) send(delta);
         await result.object; // rejects if the finished object fails validation
@@ -134,11 +139,7 @@ function streamWithoutStore(deps: AgentRunDeps, model: string, clientSignal: Abo
           send(ERROR_SENTINEL + message);
         }
       } finally {
-        try {
-          controller.close();
-        } catch {
-          /* already closed by cancellation */
-        }
+        closeControllerSafely(controller);
       }
     },
   });

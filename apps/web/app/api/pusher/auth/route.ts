@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   const params = new URLSearchParams(body);
   const socketId = params.get("socket_id");
   const channelName = params.get("channel_name");
+  
 
   if (!socketId || !channelName) {
     return new Response("Bad Request", { status: 400 });

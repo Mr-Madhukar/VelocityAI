@@ -14,14 +14,16 @@ export const metadata: Metadata = {
 
 /* ---------- doc building blocks ---------- */
 
-function CodeBlock({ lines }: { lines: (string | { c: string })[] }) {
+function CodeBlock({ lines }: Readonly<{ lines: (string | { c: string })[] }>) {
+  let counter = 0;
   return (
     <pre className="overflow-x-auto border border-border bg-card/60 p-4 font-mono text-[12.5px] leading-relaxed">
-      {lines.map((l, i) => {
+      {lines.map((l) => {
+        counter++;
         const isComment = typeof l !== "string";
         const text = isComment ? l.c : l;
         return (
-          <div key={i} className={isComment ? "text-muted-foreground/70" : undefined}>
+          <div key={`line-${counter}-${text}`} className={isComment ? "text-muted-foreground/70" : undefined}>
             {isComment ? (
               <>{text}</>
             ) : (
@@ -37,10 +39,14 @@ function CodeBlock({ lines }: { lines: (string | { c: string })[] }) {
   );
 }
 
-function DocSection({ id, heading, children }: { id: string; heading: string; children: ReactNode }) {
+function DocSection({
+  id,
+  heading,
+  children,
+}: Readonly<{ id: string; heading: string; children: ReactNode }>) {
   return (
     <section id={id} className="scroll-mt-28 space-y-4">
-      <h2 className="border-b border-border pb-2 font-[family-name:var(--font-display)] text-xl font-medium tracking-tight">
+      <h2 className="border-b border-border pb-2 font-display text-xl font-medium tracking-tight">
         {heading}
       </h2>
       <div className="space-y-4 text-sm leading-7 text-foreground/75">{children}</div>
@@ -48,7 +54,7 @@ function DocSection({ id, heading, children }: { id: string; heading: string; ch
   );
 }
 
-function FlagRow({ flag, desc }: { flag: string; desc: string }) {
+function FlagRow({ flag, desc }: Readonly<{ flag: string; desc: string }>) {
   return (
     <div className="grid grid-cols-[160px_1fr] items-baseline gap-3 border-b border-border/60 py-2 last:border-b-0">
       <code className="font-mono text-xs text-primary">{flag}</code>
@@ -57,7 +63,7 @@ function FlagRow({ flag, desc }: { flag: string; desc: string }) {
   );
 }
 
-function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
+function CommandRow({ cmd, desc }: Readonly<{ cmd: string; desc: string }>) {
   return (
     <div className="grid grid-cols-1 items-baseline gap-1 border-b border-border/60 py-2 last:border-b-0 sm:grid-cols-[minmax(240px,340px)_1fr] sm:gap-3">
       <code className="font-mono text-xs text-primary">{cmd}</code>
@@ -66,7 +72,7 @@ function CommandRow({ cmd, desc }: { cmd: string; desc: string }) {
   );
 }
 
-function CommandTable({ rows }: { rows: [string, string][] }) {
+function CommandTable({ rows }: Readonly<{ rows: [string, string][] }>) {
   return (
     <div className="border border-border bg-card/40 px-4 py-1">
       {rows.map(([cmd, desc]) => (
@@ -104,9 +110,9 @@ export default function CliDocsPage() {
           <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-primary">
             <Terminal className="size-3.5" /> Developer docs
           </p>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-medium tracking-tight sm:text-5xl">
+          <h1 className="mt-3 font-display text-4xl font-medium tracking-tight sm:text-5xl">
             VelocityAI{" "}
-            <span className="font-[family-name:var(--font-serif)] italic text-foreground/60">CLI</span>
+            <span className="font-serif italic text-foreground/60">CLI</span>
           </h1>
           <p className="mt-4 max-w-2xl font-mono text-sm leading-relaxed text-muted-foreground">
             Drive your AI product delivery pipeline — features → PRD → tasks → AI code review —
@@ -117,12 +123,12 @@ export default function CliDocsPage() {
               href="https://www.npmjs.com/package/VelocityAI"
               target="_blank"
               rel="noreferrer"
-              className="group inline-flex h-9 items-center gap-2 border border-border bg-foreground/[0.03] px-3.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40"
+              className="group inline-flex h-9 items-center gap-2 border border-border bg-foreground/3 px-3.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40"
             >
               npm package
               <ArrowUpRight className="size-3 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </a>
-            <span className="border border-border bg-foreground/[0.02] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="border border-border bg-foreground/2 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               VelocityAI@0.2.0 · node ≥ 18
             </span>
           </div>
