@@ -12,14 +12,15 @@ export function normalizePrivateKey(raw: string | undefined): string {
   }
 
   // Convert literal escaped newlines to real newlines and strip carriage returns
-  key = key.replace(/\\n/g, "\n").replace(/\r/g, "");
+  key = key.replaceAll(String.raw`\n`, "\n").replaceAll("\r", "");
 
-  const match = key.match(/(-----BEGIN[^-]+PRIVATE KEY-----[\s\S]+?-----END[^-]+PRIVATE KEY-----)/);
+  const pemRegex = /(-----BEGIN[^-]+PRIVATE KEY-----[\s\S]+?-----END[^-]+PRIVATE KEY-----)/;
+  const match = pemRegex.exec(key);
   if (match?.[1]) {
     key = match[1];
   }
 
-  return key.trim() + "\n";
+  return `${key.trim()}\n`;
 }
 
 export function getGithubApp(): App {

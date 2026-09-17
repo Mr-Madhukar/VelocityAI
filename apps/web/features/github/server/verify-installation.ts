@@ -34,22 +34,81 @@ export type InstallationOwnership =
  *     in one of their orgs. Claiming another tenant's installation requires
  *     signing in with GitHub to prove ownership.
  */
-export async function verifyInstallationOwnership(
-  userId: string,
+type InstallationAccount = { id?: number; login?: string; type?: string };
+
+async function fetchInstallationAccount(
   installationId: number,
-): Promise<InstallationOwnership> {
-  // 1. The id must exist for our app — also gives us the target account.
-  let account: { id?: number; login?: string; type?: string } | null;
+): Promise<{ ok: true; account: InstallationAccount | null } | { ok: false; error: string }> {
   try {
     const app = getGithubApp();
     const { data } = await app.octokit.rest.apps.getInstallation({
       installation_id: installationId,
     });
-    account = data.account as { id?: number; login?: string; type?: string } | null;
+    return { ok: true, account: (data.account as InstallationAccount) ?? null };
   } catch (err) {
     console.error(`verifyInstallationOwnership failed for installation ${installationId}:`, err);
     return { ok: false, error: "That GitHub App installation doesn't exist." };
   }
+}
+
+async function verifyLinkedGitHubAccount(
+  ghAccount: { accessToken: string | null; accountId: string },
+  installationId: number,
+  account: InstallationAccount | null,
+): Promise<boolean> {
+  if (ghAccount.accessToken) {
+    try {
+      const userOctokit = new Octokit({ auth: ghAccount.accessToken });
+      const { data } = await userOctokit.rest.apps.listInstallationsForAuthenticatedUser({
+        per_page: 100,
+      });
+      if (data.installations.some((i) => i.id === installationId)) return true;
+    } catch {
+      // Stale/revoked token — fall through to the account-id match.
+    }
+  }
+  return account?.id != null && String(account.id) === ghAccount.accountId;
+}
+
+async function verifyUnlinkedUserAccess(userId: string, installationId: number): Promise<boolean> {
+  const claims = await db
+    .select({ userId: githubInstallations.userId })
+    .from(githubInstallations)
+    .where(eq(githubInstallations.installationId, installationId));
+  const otherOwners = claims.map((c) => c.userId).filter((id) => id !== userId);
+  if (otherOwners.length === 0) return true;
+
+  const myOrgs = await db
+    .select({ organizationId: organizationMembersTable.organizationId })
+    .from(organizationMembersTable)
+    .where(eq(organizationMembersTable.userId, userId));
+  if (myOrgs.length === 0) return false;
+
+  const orgMates = await db
+    .select({ id: organizationMembersTable.id })
+    .from(organizationMembersTable)
+    .where(
+      and(
+        inArray(organizationMembersTable.userId, otherOwners),
+        inArray(
+          organizationMembersTable.organizationId,
+          myOrgs.map((o) => o.organizationId),
+        ),
+      ),
+    );
+  return orgMates.length > 0;
+}
+
+export async function verifyInstallationOwnership(
+  userId: string,
+  installationId: number,
+): Promise<InstallationOwnership> {
+  // 1. The id must exist for our app — also gives us the target account.
+  const fetchResult = await fetchInstallationAccount(installationId);
+  if (!fetchResult.ok) {
+    return fetchResult;
+  }
+  const { account } = fetchResult;
 
   const ownership: InstallationOwnership = {
     ok: true,
@@ -64,20 +123,8 @@ export async function verifyInstallationOwnership(
     .where(and(eq(accountsTable.userId, userId), eq(accountsTable.providerId, "github")));
 
   if (ghAccount) {
-    if (ghAccount.accessToken) {
-      try {
-        const userOctokit = new Octokit({ auth: ghAccount.accessToken });
-        const { data } = await userOctokit.rest.apps.listInstallationsForAuthenticatedUser({
-          per_page: 100,
-        });
-        if (data.installations.some((i) => i.id === installationId)) return ownership;
-      } catch {
-        // Stale/revoked token — fall through to the account-id match.
-      }
-    }
-    if (account?.id != null && String(account.id) === ghAccount.accountId) {
-      return ownership;
-    }
+    const isOwner = await verifyLinkedGitHubAccount(ghAccount, installationId, account);
+    if (isOwner) return ownership;
     return {
       ok: false,
       error:
@@ -86,32 +133,8 @@ export async function verifyInstallationOwnership(
   }
 
   // 3. Weak path (no GitHub login): allow unclaimed or teammate-claimed ids.
-  const claims = await db
-    .select({ userId: githubInstallations.userId })
-    .from(githubInstallations)
-    .where(eq(githubInstallations.installationId, installationId));
-  const otherOwners = claims.map((c) => c.userId).filter((id) => id !== userId);
-  if (otherOwners.length === 0) return ownership;
-
-  const myOrgs = await db
-    .select({ organizationId: organizationMembersTable.organizationId })
-    .from(organizationMembersTable)
-    .where(eq(organizationMembersTable.userId, userId));
-  if (myOrgs.length > 0) {
-    const orgMates = await db
-      .select({ id: organizationMembersTable.id })
-      .from(organizationMembersTable)
-      .where(
-        and(
-          inArray(organizationMembersTable.userId, otherOwners),
-          inArray(
-            organizationMembersTable.organizationId,
-            myOrgs.map((o) => o.organizationId),
-          ),
-        ),
-      );
-    if (orgMates.length > 0) return ownership;
-  }
+  const isAllowed = await verifyUnlinkedUserAccess(userId, installationId);
+  if (isAllowed) return ownership;
 
   return {
     ok: false,
