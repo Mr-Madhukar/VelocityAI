@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
   if (!sessionCookie) {
-    const signInUrl = new URL(SIGN_IN_PATH, request.url);
+    const signInUrl = new URL(SIGN_IN_PATH, request.nextUrl);
     const { pathname, search } = request.nextUrl;
     signInUrl.searchParams.set("callbackUrl", `${pathname}${search}`);
 
