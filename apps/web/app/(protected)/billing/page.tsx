@@ -12,13 +12,19 @@ export const dynamic = "force-dynamic";
 
 const INR = new Intl.NumberFormat("en-IN");
 
+function getPluralizedLimit(limit: number, singular: string, plural: string): string {
+  if (limit < 0) return `Unlimited ${plural}`;
+  const noun = limit === 1 ? singular : plural;
+  return `${limit} ${noun}`;
+}
+
 function planFeatures(plan: BillingPlan): string[] {
   const d = getPlanDetails(plan);
   const credits = d.includedCredits >= 0 ? `${INR.format(d.includedCredits)} AI review credits/mo` : "Unlimited AI reviews";
-  const repos = d.repositoryLimit >= 0 ? `${d.repositoryLimit} ${d.repositoryLimit === 1 ? "repository" : "repositories"}` : "Unlimited repositories";
+  const repos = getPluralizedLimit(d.repositoryLimit, "repository", "repositories");
   const projectsLine = d.projectLimit >= 0 ? `${d.projectLimit} projects` : "Unlimited projects";
   const featuresLine = d.featureLimit >= 0 ? `${INR.format(d.featureLimit)} feature requests` : "Unlimited feature requests";
-  const orgsLine = d.organizationLimit >= 0 ? `${d.organizationLimit} ${d.organizationLimit === 1 ? "organization" : "organizations"}` : "Unlimited organizations";
+  const orgsLine = getPluralizedLimit(d.organizationLimit, "organization", "organizations");
   const seats = d.seatsIncluded >= 0 ? `${d.seatsIncluded} team seats` : "Unlimited team seats";
   const extras: Record<BillingPlan, string> = {
     free: "",
@@ -28,16 +34,24 @@ function planFeatures(plan: BillingPlan): string[] {
   return [featuresLine, orgsLine, projectsLine, repos, credits, seats, extras[plan]].filter(Boolean);
 }
 
-function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
+function getUsageTone(hasLimit: boolean, pct: number): string {
+  if (!hasLimit || pct < 80) return "bg-primary";
+  if (pct >= 100) return "bg-red-400";
+  return "bg-amber-400";
+}
+
+function UsageBar({
+  label,
+  used,
+  limit,
+}: Readonly<{
+  label: string;
+  used: number;
+  limit: number | null;
+}>) {
   const hasLimit = typeof limit === "number" && limit > 0;
   const pct = hasLimit ? Math.min(Math.round((used / limit) * 100), 100) : 0;
-  const tone = !hasLimit
-    ? "bg-primary"
-    : pct >= 100
-      ? "bg-red-400"
-      : pct >= 80
-        ? "bg-amber-400"
-        : "bg-primary";
+  const tone = getUsageTone(hasLimit, pct);
 
   return (
     <div>
@@ -48,11 +62,50 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
           {hasLimit ? <span className="text-muted-foreground"> / {INR.format(limit)}</span> : null}
         </p>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/6">
         <div className={cn("h-full rounded-full transition-all", tone)} style={{ width: `${hasLimit ? pct : 6}%` }} />
       </div>
     </div>
   );
+}
+
+function getPlanCardBorder(isCurrent: boolean, highlight: boolean): string {
+  if (isCurrent) return "";
+  if (highlight) return "border-primary/40";
+  return "border-foreground/10";
+}
+
+function PlanAction({
+  planId,
+  planLabel,
+  isCurrent,
+  highlight,
+}: Readonly<{
+  planId: BillingPlan;
+  planLabel: string;
+  isCurrent: boolean;
+  highlight: boolean;
+}>) {
+  if (isCurrent) {
+    return (
+      <div className="flex h-10 items-center justify-center gap-1.5 rounded-md border text-xs font-semibold text-primary">
+        <CheckCircle2 className="size-3.5" />
+        Your active plan
+      </div>
+    );
+  }
+
+  if (planId !== "free") {
+    return (
+      <UpgradeButton
+        plan={planId as "pro" | "scale"}
+        label={planLabel}
+        highlight={highlight}
+      />
+    );
+  }
+
+  return <p className="text-center text-xs text-muted-foreground">No charge</p>;
 }
 
 export default async function BillingPage() {
@@ -79,7 +132,7 @@ export default async function BillingPage() {
 
       <div className="grid gap-6">
         {/* Current plan + real usage */}
-        <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+        <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-foreground">Current usage</h2>
@@ -123,12 +176,8 @@ export default async function BillingPage() {
                   "relative flex flex-col rounded-lg border p-5 transition-colors",
                   // Background follows the plan (Pro highlight vs default) only —
                   // never changed by "current", so the Free card keeps its bg.
-                  highlight ? "bg-primary/5" : "bg-foreground/[0.03]",
-                  isCurrent
-                    ? " "
-                    : highlight
-                      ? "border-primary/40"
-                      : "border-foreground/10",
+                  highlight ? "bg-primary/5" : "bg-foreground/3",
+                  getPlanCardBorder(isCurrent, highlight),
                 )}
               >
                 {isCurrent ? (
@@ -152,16 +201,12 @@ export default async function BillingPage() {
                   ))}
                 </ul>
                 <div className="mt-auto">
-                  {!isCurrent && planId !== "free" ? (
-                    <UpgradeButton plan={planId as "pro" | "scale"} label={plan.label} highlight={highlight} />
-                  ) : isCurrent ? (
-                    <div className="flex h-10 items-center justify-center gap-1.5 rounded-md border  text-xs font-semibold text-primary">
-                      <CheckCircle2 className="size-3.5" />
-                      Your active plan
-                    </div>
-                  ) : (
-                    <p className="text-center text-xs text-muted-foreground">No charge</p>
-                  )}
+                  <PlanAction
+                    planId={planId}
+                    planLabel={plan.label}
+                    isCurrent={isCurrent}
+                    highlight={highlight}
+                  />
                 </div>
               </div>
             );

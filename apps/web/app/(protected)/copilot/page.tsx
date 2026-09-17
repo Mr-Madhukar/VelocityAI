@@ -4,4 +4,5 @@ import { redirect } from "next/navigation";
 // available on every protected page. Keep old bookmarks working.
 export default function CopilotPage() {
   redirect("/dashboard");
+  
 }

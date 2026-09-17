@@ -8,9 +8,9 @@ import { VelocityAIAssistant } from "~/components/shipflow/assistant/assistant-w
 
 export default async function ProtectedLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const session = await requireAuth();
 
   // First-time sign-in: if the user has no org memberships, create a personal workspace

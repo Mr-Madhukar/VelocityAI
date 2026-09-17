@@ -10,12 +10,12 @@ import {
   ExternalLink,
   FolderKanban,
   GitPullRequestArrow,
-  Github,
   Plus,
   Rocket,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 
 import { useActiveProject } from "~/components/shipflow/project-context";
 import { CreateProjectDialog } from "~/components/shipflow/create-project-dialog";
@@ -75,13 +75,13 @@ type ActivityItem = {
   externalUrl: string | null;
 };
 
-function ActivityRow({ item }: { item: ActivityItem }) {
+function ActivityRow({ item }: Readonly<{ item: ActivityItem }>) {
   const meta = ACTIVITY_META[item.kind];
   const Icon = meta.icon;
 
   const inner = (
     <>
-      <span className={`grid size-8 shrink-0 place-items-center border border-border bg-foreground/[0.03] ${meta.tone}`}>
+      <span className={`grid size-8 shrink-0 place-items-center border border-border bg-foreground/3 ${meta.tone}`}>
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
           {meta.label}
           {item.subtitle ? ` · ${item.subtitle}` : ""}
-          {item.status ? ` · ${item.status.replace(/_/g, " ")}` : ""}
+          {item.status ? ` · ${item.status.replaceAll("_", " ")}` : ""}
         </p>
       </div>
       <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{timeAgo(item.at)}</span>
@@ -102,7 +102,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   );
 
   const className =
-    "group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-foreground/[0.03]";
+    "group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-foreground/3";
 
   if (item.href) {
     return (
@@ -125,10 +125,10 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 function OnboardingChecklist({
   hasProjects,
   hasRepos,
-}: {
+}: Readonly<{
   hasProjects: boolean;
   hasRepos: boolean;
-}) {
+}>) {
   const steps = [
     {
       done: hasProjects,
@@ -137,7 +137,7 @@ function OnboardingChecklist({
       action: hasProjects ? null : (
         <CreateProjectDialog
           trigger={
-            <button className="inline-flex h-8 items-center gap-1.5 border border-border bg-foreground/[0.03] px-3 text-xs font-medium text-foreground transition-colors hover:border-foreground/20">
+            <button className="inline-flex h-8 items-center gap-1.5 border border-border bg-foreground/3 px-3 text-xs font-medium text-foreground transition-colors hover:border-foreground/20">
               <FolderKanban className="size-3.5" /> New project
             </button>
           }
@@ -151,9 +151,9 @@ function OnboardingChecklist({
       action: hasRepos ? null : (
         <Link
           href="/github"
-          className="inline-flex h-8 items-center gap-1.5 border border-border bg-foreground/[0.03] px-3 text-xs font-medium text-foreground transition-colors hover:border-foreground/20"
+          className="inline-flex h-8 items-center gap-1.5 border border-border bg-foreground/3 px-3 text-xs font-medium text-foreground transition-colors hover:border-foreground/20"
         >
-          <Github className="size-3.5" /> Connect repo
+          <SiGithub className="size-3.5" /> Connect repo
         </Link>
       ),
     },
@@ -291,7 +291,7 @@ export default function DashboardPage() {
                   <Link
                     key={feature.id}
                     href={`/features/${feature.id}`}
-                    className="group grid gap-4 px-5 py-4 transition-colors hover:bg-foreground/[0.03] md:grid-cols-[1.5fr_0.7fr_0.7fr] md:items-center"
+                    className="group grid gap-4 px-5 py-4 transition-colors hover:bg-foreground/3 md:grid-cols-[1.5fr_0.7fr_0.7fr] md:items-center"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2.5">

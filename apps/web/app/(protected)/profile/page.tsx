@@ -11,6 +11,7 @@ import {
   LogOut,
   ShieldCheck,
 } from "lucide-react";
+import type { RouterOutputs } from "@repo/trpc/client";
 
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/trpc/client";
@@ -30,6 +31,271 @@ const STATUS_FILTERS = [
 ] as const;
 
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+type MembershipItem = RouterOutputs["profile"]["memberships"][number];
+type TaskItem = RouterOutputs["profile"]["myTasks"][number];
+
+function filterTasks(
+  tasks: TaskItem[] | undefined,
+  orgFilter: string,
+  statusFilter: StatusFilter,
+): TaskItem[] {
+  if (!tasks) return [];
+  return tasks.filter((task) => {
+    if (orgFilter !== "all" && task.organizationId !== orgFilter) return false;
+    if (statusFilter === "all") return true;
+    if (statusFilter === "done") return task.status === "done";
+    if (statusFilter === "in_progress") return task.status === "in_progress";
+    return task.status !== "done" && task.status !== "in_progress";
+  });
+}
+
+function ProfileHeader({
+  user,
+  emailStatus,
+  signingOut,
+  onSignOut,
+  onVerifyOpen,
+}: Readonly<{
+  user: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+  emailStatus?: { emailVerified: boolean } | null;
+  signingOut: boolean;
+  onSignOut: () => void;
+  onVerifyOpen: () => void;
+}>) {
+  const displayName = getDisplayName(user);
+
+  return (
+    <div className="flex items-center gap-5">
+      <Avatar className="size-20 ring-2 ring-foreground/10">
+        {user.image ? <AvatarImage src={user.image} alt={displayName} /> : null}
+        <AvatarFallback className="text-2xl">{getInitials(user)}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <h1 className="truncate text-2xl font-bold text-foreground">{displayName}</h1>
+        {user.email ? (
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+            {emailStatus ? (
+              <>
+                <EmailVerifiedBadge verified={emailStatus.emailVerified} />
+                {!emailStatus.emailVerified && (
+                  <button
+                    type="button"
+                    onClick={onVerifyOpen}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    <ShieldCheck className="size-3.5" />
+                    Verify email
+                  </button>
+                )}
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0 text-muted-foreground hover:text-red-400"
+        onClick={onSignOut}
+        disabled={signingOut}
+      >
+        <LogOut className="size-4" />
+        Sign out
+      </Button>
+    </div>
+  );
+}
+
+function OrgRow({
+  membership,
+  isActive,
+  isSwitching,
+  disabled,
+  onSwitch,
+}: Readonly<{
+  membership: MembershipItem;
+  isActive: boolean;
+  isSwitching: boolean;
+  disabled: boolean;
+  onSwitch: () => void;
+}>) {
+  return (
+    <button
+      type="button"
+      onClick={onSwitch}
+      disabled={disabled}
+      className={cn(
+        "flex items-center gap-4 rounded-xl border px-4 py-3 text-left transition disabled:opacity-60",
+        isActive
+          ? "border-primary/40 bg-primary/6"
+          : "border-foreground/10 bg-foreground/3 hover:bg-foreground/6",
+      )}
+    >
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-lg font-bold text-primary">
+        {membership.orgName?.[0]?.toUpperCase() ?? "?"}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate font-medium text-foreground">{membership.orgName}</p>
+          {isActive ? (
+            <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-primary">
+              active
+            </span>
+          ) : null}
+        </div>
+        <p className="text-xs capitalize text-muted-foreground">
+          {membership.plan} plan · {membership.memberCount} members
+        </p>
+      </div>
+      {isSwitching ? (
+        <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+      ) : (
+        <RoleBadge role={membership.role} />
+      )}
+    </button>
+  );
+}
+
+function OrganizationsList({
+  isLoading,
+  memberships,
+  currentOrgId,
+  switchingOrg,
+  onSwitchOrg,
+}: Readonly<{
+  isLoading: boolean;
+  memberships?: MembershipItem[];
+  currentOrgId?: string;
+  switchingOrg: string | null;
+  onSwitchOrg: (orgId: string) => void;
+}>) {
+  if (isLoading) {
+    return <CardSkeleton />;
+  }
+
+  if (!memberships || memberships.length === 0) {
+    return <EmptyState text="You're not a member of any organization yet." />;
+  }
+
+  return (
+    <div className="grid gap-3">
+      {memberships.map((m) => (
+        <OrgRow
+          key={m.orgId}
+          membership={m}
+          isActive={m.orgId === currentOrgId}
+          isSwitching={switchingOrg === m.orgId}
+          disabled={!!switchingOrg}
+          onSwitch={() => onSwitchOrg(m.orgId)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TaskFilterControls({
+  hasMultipleOrgs,
+  orgFilter,
+  onOrgFilterChange,
+  memberships,
+  statusFilter,
+  onStatusFilterChange,
+}: Readonly<{
+  hasMultipleOrgs: boolean;
+  orgFilter: string;
+  onOrgFilterChange: (org: string) => void;
+  memberships?: MembershipItem[];
+  statusFilter: StatusFilter;
+  onStatusFilterChange: (status: StatusFilter) => void;
+}>) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {hasMultipleOrgs ? (
+        <select
+          value={orgFilter}
+          onChange={(e) => onOrgFilterChange(e.target.value)}
+          className="h-8 rounded-lg border border-foreground/10 bg-foreground/3 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+        >
+          <option value="all">All organizations</option>
+          {memberships?.map((m) => (
+            <option key={m.orgId} value={m.orgId}>
+              {m.orgName}
+            </option>
+          ))}
+        </select>
+      ) : null}
+      <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/3 p-0.5">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.value}
+            type="button"
+            onClick={() => onStatusFilterChange(filter.value)}
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-medium transition",
+              statusFilter === filter.value
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskRow({ task }: Readonly<{ task: TaskItem }>) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-foreground/10 bg-foreground/3 px-4 py-3">
+      <TaskStatusIcon status={task.status} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {task.orgName} · {task.featureTitle}
+        </p>
+      </div>
+      <span className="shrink-0 text-xs capitalize text-muted-foreground">
+        {task.status.replaceAll("_", " ")}
+      </span>
+    </div>
+  );
+}
+
+function MyTasksList({
+  isLoading,
+  totalTasksCount,
+  filteredTasks,
+}: Readonly<{
+  isLoading: boolean;
+  totalTasksCount: number;
+  filteredTasks: TaskItem[];
+}>) {
+  if (isLoading) {
+    return <CardSkeleton />;
+  }
+
+  if (totalTasksCount === 0) {
+    return <EmptyState text="No tasks assigned to you yet." />;
+  }
+
+  if (filteredTasks.length === 0) {
+    return <EmptyState text="No tasks match the selected filters." />;
+  }
+
+  return (
+    <div className="grid gap-2">
+      {filteredTasks.map((task) => (
+        <TaskRow key={task.id} task={task} />
+      ))}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -54,23 +320,16 @@ export default function ProfilePage() {
   const [switchingOrg, setSwitchingOrg] = useState<string | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
 
-  // Task filters — org scope + status. Org filter only matters with 2+ orgs.
   const [orgFilter, setOrgFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const tasks = myTasks.data;
   const hasMultipleOrgs = (memberships.data?.length ?? 0) > 1;
 
-  const filteredTasks = useMemo(() => {
-    return (tasks ?? []).filter((task) => {
-      if (orgFilter !== "all" && task.organizationId !== orgFilter) return false;
-      if (statusFilter === "all") return true;
-      if (statusFilter === "done") return task.status === "done";
-      if (statusFilter === "in_progress") return task.status === "in_progress";
-      // "todo" bucket = anything not started or done (todo/backlog/etc).
-      return task.status !== "done" && task.status !== "in_progress";
-    });
-  }, [tasks, orgFilter, statusFilter]);
+  const filteredTasks = useMemo(
+    () => filterTasks(tasks, orgFilter, statusFilter),
+    [tasks, orgFilter, statusFilter],
+  );
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -79,9 +338,6 @@ export default function ProfilePage() {
     });
   }
 
-  // Switching org here mirrors the sidebar OrgSwitcher: persist the active org
-  // on the server session, then invalidate the client cache so everything
-  // refetches against the new org before landing on the dashboard.
   async function switchOrg(organizationId: string) {
     if (switchingOrg) return;
     if (organizationId === currentOrg?.id) {
@@ -108,175 +364,49 @@ export default function ProfilePage() {
     return null;
   }
 
-  const user = session.user;
-  const displayName = getDisplayName(user);
-
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-5">
-        <Avatar className="size-20 ring-2 ring-foreground/10">
-          {user.image ? <AvatarImage src={user.image} alt={displayName} /> : null}
-          <AvatarFallback className="text-2xl">{getInitials(user)}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <h1 className="truncate text-2xl font-bold text-foreground">{displayName}</h1>
-          {user.email ? (
-            <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-              {emailStatus ? (
-                <>
-                  <EmailVerifiedBadge verified={emailStatus.emailVerified} />
-                  {!emailStatus.emailVerified && (
-                    <button
-                      type="button"
-                      onClick={() => setVerifyOpen(true)}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                    >
-                      <ShieldCheck className="size-3.5" />
-                      Verify email
-                    </button>
-                  )}
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="shrink-0 text-muted-foreground hover:text-red-400"
-          onClick={handleSignOut}
-          disabled={signingOut}
-        >
-          <LogOut className="size-4" />
-          Sign out
-        </Button>
-      </div>
+      <ProfileHeader
+        user={session.user}
+        emailStatus={emailStatus}
+        signingOut={signingOut}
+        onSignOut={handleSignOut}
+        onVerifyOpen={() => setVerifyOpen(true)}
+      />
 
       <VerifyEmailDialog open={verifyOpen} onOpenChange={setVerifyOpen} />
 
-      {/* Organizations */}
       <Section icon={<Building2 className="size-4" />} title="Organizations">
-        {memberships.isPending ? (
-          <CardSkeleton />
-        ) : memberships.data?.length === 0 ? (
-          <EmptyState text="You're not a member of any organization yet." />
-        ) : (
-          <div className="grid gap-3">
-            {memberships.data?.map((m) => {
-              const isActive = m.orgId === currentOrg?.id;
-              const isSwitching = switchingOrg === m.orgId;
-              return (
-                <button
-                  key={m.orgId}
-                  type="button"
-                  onClick={() => switchOrg(m.orgId)}
-                  disabled={!!switchingOrg}
-                  className={cn(
-                    "flex items-center gap-4 rounded-xl border px-4 py-3 text-left transition disabled:opacity-60",
-                    isActive
-                      ? "border-primary/40 bg-primary/[0.06]"
-                      : "border-foreground/10 bg-foreground/[0.03] hover:bg-foreground/[0.06]",
-                  )}
-                >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-lg font-bold text-primary">
-                    {m.orgName?.[0]?.toUpperCase() ?? "?"}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium text-foreground">{m.orgName}</p>
-                      {isActive ? (
-                        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-primary">
-                          active
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="text-xs capitalize text-muted-foreground">
-                      {m.plan} plan · {m.memberCount} members
-                    </p>
-                  </div>
-                  {isSwitching ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-                  ) : (
-                    <RoleBadge role={m.role} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        <OrganizationsList
+          isLoading={memberships.isPending}
+          memberships={memberships.data}
+          currentOrgId={currentOrg?.id}
+          switchingOrg={switchingOrg}
+          onSwitchOrg={switchOrg}
+        />
       </Section>
 
-      {/* My Tasks */}
       <Section
         icon={<ListTodo className="size-4" />}
         title="My Tasks"
         action={
-          myTasks.data && myTasks.data.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {hasMultipleOrgs ? (
-                <select
-                  value={orgFilter}
-                  onChange={(e) => setOrgFilter(e.target.value)}
-                  className="h-8 rounded-lg border border-foreground/10 bg-foreground/[0.03] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-                >
-                  <option value="all">All organizations</option>
-                  {memberships.data?.map((m) => (
-                    <option key={m.orgId} value={m.orgId}>
-                      {m.orgName}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-              <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-0.5">
-                {STATUS_FILTERS.map((filter) => (
-                  <button
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setStatusFilter(filter.value)}
-                    className={cn(
-                      "rounded-md px-2.5 py-1 text-xs font-medium transition",
-                      statusFilter === filter.value
-                        ? "bg-primary/15 text-primary"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          tasks && tasks.length > 0 ? (
+            <TaskFilterControls
+              hasMultipleOrgs={hasMultipleOrgs}
+              orgFilter={orgFilter}
+              onOrgFilterChange={setOrgFilter}
+              memberships={memberships.data}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+            />
           ) : null
         }
       >
-        {myTasks.isPending ? (
-          <CardSkeleton />
-        ) : (tasks ?? []).length === 0 ? (
-          <EmptyState text="No tasks assigned to you yet." />
-        ) : filteredTasks.length === 0 ? (
-          <EmptyState text="No tasks match the selected filters." />
-        ) : (
-          <div className="grid gap-2">
-            {filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-start gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.03] px-4 py-3"
-              >
-                <TaskStatusIcon status={task.status} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {task.orgName} · {task.featureTitle}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs capitalize text-muted-foreground">
-                  {task.status.replace("_", " ")}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        <MyTasksList
+          isLoading={myTasks.isPending}
+          totalTasksCount={tasks?.length ?? 0}
+          filteredTasks={filteredTasks}
+        />
       </Section>
     </div>
   );
@@ -287,12 +417,12 @@ function Section({
   title,
   action,
   children,
-}: {
+}: Readonly<{
   icon: React.ReactNode;
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -307,7 +437,7 @@ function Section({
   );
 }
 
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role }: Readonly<{ role: string }>) {
   const colors: Record<string, string> = {
     owner: "bg-amber-400/10 text-amber-700 dark:text-amber-300 border-amber-400/20",
     admin: "bg-purple-400/10 text-purple-300 border-purple-400/20",
@@ -323,15 +453,15 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-function TaskStatusIcon({ status }: { status: string }) {
+function TaskStatusIcon({ status }: Readonly<{ status: string }>) {
   if (status === "done") return <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />;
   if (status === "in_progress") return <Clock className="mt-0.5 size-4 shrink-0 text-primary" />;
   return <div className="mt-1 size-3 shrink-0 rounded-full border border-muted-foreground" />;
 }
 
-function EmptyState({ text }: { text: string }) {
+function EmptyState({ text }: Readonly<{ text: string }>) {
   return (
-    <div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] px-4 py-8 text-center">
+    <div className="rounded-xl border border-foreground/10 bg-foreground/3 px-4 py-8 text-center">
       <p className="text-sm text-muted-foreground">{text}</p>
     </div>
   );

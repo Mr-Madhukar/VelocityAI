@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, type Variants } from "framer-motion";
 import {
-  CheckCircle2, ChevronRight, ExternalLink, GitBranch, Github,
+  CheckCircle2, ChevronRight, ExternalLink, GitBranch,
   Loader2, Lock, Globe, Search, ShieldCheck, Link2, Settings, Unlink2,
   FolderGit2, FolderPlus, Plus,
 } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 import { toast } from "sonner";
 
 import { PageHeader } from "~/components/shipflow/ui-kit";
@@ -77,13 +78,13 @@ function ProjectPickerDialog({
   repoName,
   onPick,
   connecting,
-}: {
+}: Readonly<{
   open: boolean;
   onOpenChange: (v: boolean) => void;
   repoName: string;
   onPick: (projectId: string, projectName: string) => void;
   connecting: boolean;
-}) {
+}>) {
   const { projects, setActiveProjectId } = useActiveProject();
   const utils = trpc.useUtils();
   const [creating, setCreating] = useState(projects.length === 0);
@@ -129,7 +130,7 @@ function ProjectPickerDialog({
                   type="button"
                   disabled={busy}
                   onClick={() => onPick(p.id, p.name)}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-foreground/[0.04] disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-foreground/4 disabled:opacity-50"
                 >
                   <FolderGit2 className="size-4 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1">
@@ -201,12 +202,12 @@ function RepoRow({
   projectId,
   installationId,
   onConnected,
-}: {
+}: Readonly<{
   repo: GithubRepo;
   projectId: string | null;
   installationId: number;
   onConnected: (repo: ConnectedRepo) => void;
-}) {
+}>) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { activeProject } = useActiveProject();
 
@@ -285,11 +286,11 @@ function ConnectedRepoRow({
   repo,
   isDeletedOnGithub,
   onSelect,
-}: {
+}: Readonly<{
   repo: { id: string; fullName: string; name: string; defaultBranch: string | null; installationId: number | null; projectId: string | null };
   isDeletedOnGithub: boolean;
   onSelect: () => void;
-}) {
+}>) {
   const [confirming, setConfirming] = useState(false);
   const utils = trpc.useUtils();
 
@@ -302,7 +303,7 @@ function ConnectedRepoRow({
   });
 
   return (
-    <div className={cn("flex w-full items-center gap-4 px-5 py-3.5 transition hover:bg-foreground/[0.03]", !isDeletedOnGithub && "cursor-pointer")}>
+    <div className={cn("flex w-full items-center gap-4 px-5 py-3.5 transition hover:bg-foreground/3", !isDeletedOnGithub && "cursor-pointer")}>
       <CheckCircle2 className={cn("size-4 shrink-0", isDeletedOnGithub ? "text-destructive/60" : "text-success")} />
 
       {isDeletedOnGithub ? (
@@ -362,6 +363,300 @@ function ConnectedRepoRow({
           {isDeletedOnGithub ? "Remove" : "Disconnect"}
         </button>
       )}
+    </div>
+  );
+}
+
+function DetectedInstallsList({
+  detecting,
+  detectedInstalls,
+  savingInstallation,
+  onSave,
+  onDetect,
+}: Readonly<{
+  detecting: boolean;
+  detectedInstalls: AppInstallation[];
+  savingInstallation: boolean;
+  onSave: (id: number) => void;
+  onDetect: () => void;
+}>) {
+  if (detecting) {
+    return (
+      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="size-3.5 animate-spin" /> Looking for installations…
+      </div>
+    );
+  }
+
+  if (detectedInstalls.length > 0) {
+    return (
+      <div className="mt-3 space-y-2">
+        {detectedInstalls.map((inst) => (
+          <div key={inst.installationId} className="flex items-center gap-3 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-2">
+            {inst.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={inst.avatarUrl} alt={inst.accountLogin ?? ""} className="size-6 rounded-full" />
+            ) : (
+              <SiGithub className="size-5 text-muted-foreground" />
+            )}
+            <span className="flex-1 truncate text-sm text-foreground">
+              {inst.accountLogin ?? `Installation ${inst.installationId}`}
+            </span>
+            <Button
+              size="sm"
+              disabled={savingInstallation}
+              onClick={() => onSave(inst.installationId)}
+              className="bg-primary text-primary-foreground hover:bg-primary"
+            >
+              {savingInstallation ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />}
+              Connect
+            </Button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onDetect}
+      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-1.5 text-xs text-foreground/80 transition hover:bg-foreground/10"
+    >
+      <SiGithub className="size-3.5" />
+      Detect installation
+    </button>
+  );
+}
+
+function GithubAppCardBody({
+  savingInstallation,
+  installed,
+  accountLogin,
+  installationId,
+  onOpenPopup,
+  installUrl,
+  detecting,
+  detectedInstalls,
+  onSaveInstallation,
+  onDetectInstallations,
+}: Readonly<{
+  savingInstallation: boolean;
+  installed: boolean;
+  accountLogin?: string | null;
+  installationId?: number | null;
+  onOpenPopup: (url: string | null) => void;
+  installUrl: string | null;
+  detecting: boolean;
+  detectedInstalls: AppInstallation[];
+  onSaveInstallation: (id: number) => void;
+  onDetectInstallations: () => void;
+}>) {
+  if (savingInstallation) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4">
+        <Loader2 className="size-5 animate-spin text-primary" />
+        <p className="text-sm font-medium text-primary">Saving installation…</p>
+      </div>
+    );
+  }
+
+  if (installed) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success/10 p-4">
+          <ShieldCheck className="size-5 text-success" />
+          <div>
+            <p className="font-medium text-success">Connected</p>
+            {accountLogin && (
+              <p className="text-xs text-success/70">@{accountLogin}</p>
+            )}
+          </div>
+        </div>
+        {installationId && (
+          <button
+            type="button"
+            onClick={() => onOpenPopup(getManageUrl(installationId))}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-1.5 text-xs text-foreground/80 transition hover:bg-foreground/10"
+          >
+            <Settings className="size-3.5" />
+            Manage repositories
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Install the VelocityAI GitHub App to automatically sync pull requests, trigger AI code reviews, and post status checks directly to your repositories.
+      </p>
+      <button
+        type="button"
+        onClick={() => onOpenPopup(installUrl)}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:opacity-95 active:scale-[0.98]"
+      >
+        Install / Connect GitHub App
+        <ExternalLink className="size-4" />
+      </button>
+      {installUrl && (
+        <a
+          href={installUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground/80 hover:underline"
+        >
+          Popup blocked? Open in a new tab instead
+        </a>
+      )}
+
+      <div className="rounded-xl border border-foreground/10 bg-foreground/2 p-4">
+        <p className="text-xs font-medium text-foreground/80">Already installed the app?</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          If GitHub didn&apos;t bring you back automatically, detect your existing installation here.
+        </p>
+
+        <DetectedInstallsList
+          detecting={detecting}
+          detectedInstalls={detectedInstalls}
+          savingInstallation={savingInstallation}
+          onSave={onSaveInstallation}
+          onDetect={onDetectInstallations}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GithubAppCard({
+  savingInstallation,
+  installed,
+  accountLogin,
+  installationId,
+  onOpenPopup,
+  detecting,
+  detectedInstalls,
+  onSaveInstallation,
+  onDetectInstallations,
+}: Readonly<{
+  savingInstallation: boolean;
+  installed: boolean;
+  accountLogin?: string | null;
+  installationId?: number | null;
+  onOpenPopup: (url: string | null) => void;
+  detecting: boolean;
+  detectedInstalls: AppInstallation[];
+  onSaveInstallation: (id: number) => void;
+  onDetectInstallations: () => void;
+}>) {
+  const installUrl = getInstallUrl();
+
+  return (
+    <motion.div variants={FADE_UP} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-sm">
+      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-foreground/5 blur-3xl transition-all group-hover:bg-primary/20" />
+
+      <div className="mb-8 flex items-center gap-4">
+        <div className="grid size-12 place-items-center rounded-xl bg-foreground/5 text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+          <SiGithub className="size-6" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">GitHub App</h2>
+          <p className="text-sm text-muted-foreground">Repository access</p>
+        </div>
+      </div>
+
+      <GithubAppCardBody
+        savingInstallation={savingInstallation}
+        installed={installed}
+        accountLogin={accountLogin}
+        installationId={installationId}
+        onOpenPopup={onOpenPopup}
+        installUrl={installUrl}
+        detecting={detecting}
+        detectedInstalls={detectedInstalls}
+        onSaveInstallation={onSaveInstallation}
+        onDetectInstallations={onDetectInstallations}
+      />
+    </motion.div>
+  );
+}
+
+function AvailableReposSection({
+  loadingRepos,
+  unconnectedCount,
+  activeProjectName,
+  unconnectedRepos,
+  visibleUnconnected,
+  debouncedRepoQuery,
+  activeProjectId,
+  installationId,
+  onConnected,
+}: Readonly<{
+  loadingRepos: boolean;
+  unconnectedCount: number;
+  activeProjectName?: string;
+  unconnectedRepos: GithubRepo[];
+  visibleUnconnected: GithubRepo[];
+  debouncedRepoQuery: string;
+  activeProjectId: string | null;
+  installationId: number;
+  onConnected: (repo: ConnectedRepo) => void;
+}>) {
+  function renderBody() {
+    if (loadingRepos) {
+      return (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl border border-foreground/10 bg-foreground/3" />
+          ))}
+        </div>
+      );
+    }
+    if (unconnectedRepos.length === 0) {
+      return (
+        <div className="rounded-xl border border-foreground/10 py-12 text-center text-sm text-muted-foreground">
+          All accessible repositories are already connected.
+        </div>
+      );
+    }
+    if (visibleUnconnected.length === 0) {
+      return (
+        <div className="rounded-xl border border-foreground/10 py-12 text-center text-sm text-muted-foreground">
+          No repositories match “{debouncedRepoQuery}”.
+        </div>
+      );
+    }
+    return (
+      <div className="overflow-hidden rounded-xl border border-foreground/10 divide-y divide-foreground/5">
+        {visibleUnconnected.map((repo) => (
+          <RepoRow
+            key={repo.id}
+            repo={repo}
+            projectId={activeProjectId}
+            installationId={installationId}
+            onConnected={onConnected}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-sm font-semibold text-foreground">
+          {loadingRepos ? "Loading repositories…" : `Available repositories (${unconnectedCount})`}
+        </h2>
+        <span className="text-xs text-muted-foreground">
+          {activeProjectName ? (
+            <>Connecting to <span className="font-medium text-primary">{activeProjectName}</span></>
+          ) : (
+            "Choose a project on connect"
+          )}
+        </span>
+      </div>
+      {renderBody()}
     </div>
   );
 }
@@ -591,118 +886,17 @@ export default function GithubPage() {
         className="mt-6 grid max-w-5xl gap-6 lg:grid-cols-[0.9fr_1.1fr]"
       >
         {/* Connection status card */}
-        <motion.div variants={FADE_UP} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-sm">
-          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-foreground/5 blur-3xl transition-all group-hover:bg-primary/20" />
-
-          <div className="mb-8 flex items-center gap-4">
-            <div className="grid size-12 place-items-center rounded-xl bg-foreground/5 text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-              <Github className="size-6" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-foreground">GitHub App</h2>
-              <p className="text-sm text-muted-foreground">Repository access</p>
-            </div>
-          </div>
-
-          {savingInstallation ? (
-            <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4">
-              <Loader2 className="size-5 animate-spin text-primary" />
-              <p className="text-sm font-medium text-primary">Saving installation…</p>
-            </div>
-          ) : installStatus.installed ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success/10 p-4">
-                <ShieldCheck className="size-5 text-success" />
-                <div>
-                  <p className="font-medium text-success">Connected</p>
-                  {installStatus.installation?.accountLogin && (
-                    <p className="text-xs text-success/70">@{installStatus.installation.accountLogin}</p>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => openGithubPopup(getManageUrl(installStatus.installation!.installationId))}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-1.5 text-xs text-foreground/80 transition hover:bg-foreground/10"
-              >
-                <Settings className="size-3.5" />
-                Manage repositories
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Install the VelocityAI GitHub App to automatically sync pull requests, trigger AI code reviews, and post status checks directly to your repositories.
-              </p>
-              <button
-                type="button"
-                onClick={() => openGithubPopup(getInstallUrl())}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:opacity-95 active:scale-[0.98]"
-              >
-                Install / Connect GitHub App
-                <ExternalLink className="size-4" />
-              </button>
-              {getInstallUrl() && (
-                <a
-                  href={getInstallUrl()!}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground/80 hover:underline"
-                >
-                  Popup blocked? Open in a new tab instead
-                </a>
-              )}
-
-              {/* Fallback: already installed but GitHub didn't redirect back */}
-              <div className="rounded-xl border border-foreground/10 bg-foreground/[0.02] p-4">
-                <p className="text-xs font-medium text-foreground/80">Already installed the app?</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  If GitHub didn&apos;t bring you back automatically, detect your existing installation here.
-                </p>
-
-                {detecting ? (
-                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3.5 animate-spin" /> Looking for installations…
-                  </div>
-                ) : detectedInstalls.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {detectedInstalls.map((inst) => (
-                      <div key={inst.installationId} className="flex items-center gap-3 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-2">
-                        {inst.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={inst.avatarUrl} alt={inst.accountLogin ?? ""} className="size-6 rounded-full" />
-                        ) : (
-                          <Github className="size-5 text-muted-foreground" />
-                        )}
-                        <span className="flex-1 truncate text-sm text-foreground">
-                          {inst.accountLogin ?? `Installation ${inst.installationId}`}
-                        </span>
-                        <Button
-                          size="sm"
-                          disabled={savingInstallation}
-                          onClick={() => void saveInstallation(inst.installationId)}
-                          className="bg-primary text-primary-foreground hover:bg-primary"
-                        >
-                          {savingInstallation ? <Loader2 className="size-3.5 animate-spin" /> : <Link2 className="size-3.5" />}
-                          Connect
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => detectInstallations(false)}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-1.5 text-xs text-foreground/80 transition hover:bg-foreground/10"
-                  >
-                    <Github className="size-3.5" />
-                    Detect installation
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </motion.div>
+        <GithubAppCard
+          savingInstallation={savingInstallation}
+          installed={installStatus.installed}
+          accountLogin={installStatus.installation?.accountLogin}
+          installationId={installStatus.installation?.installationId}
+          onOpenPopup={openGithubPopup}
+          detecting={detecting}
+          detectedInstalls={detectedInstalls}
+          onSaveInstallation={(id) => void saveInstallation(id)}
+          onDetectInstallations={() => void detectInstallations(false)}
+        />
 
         {/* How it works */}
         <motion.div variants={FADE_UP} className="rounded-2xl border border-border bg-card p-8 shadow-sm">
@@ -718,8 +912,8 @@ export default function GithubPage() {
               { title: "Open a pull request", desc: "VelocityAI detects the new PR and caches it here." },
               { title: "Automated AI Review", desc: "Code is reviewed against the PRD and shown in the Review tab." },
             ].map((step, i) => (
-              <div key={i} className="relative">
-                <span className="absolute -left-[37px] grid size-7 place-items-center rounded-full border border-primary/30 bg-card font-mono text-[11px] font-bold text-primary">
+              <div key={step.title} className="relative">
+                <span className="absolute -left-9.25 grid size-7 place-items-center rounded-full border border-primary/30 bg-card font-mono text-[11px] font-bold text-primary">
                   {i + 1}
                 </span>
                 <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
@@ -739,7 +933,7 @@ export default function GithubPage() {
           className="mt-8 max-w-5xl space-y-6"
         >
           {!activeProjectId && (
-            <p className="rounded-xl border border-foreground/10 bg-foreground/[0.03] px-4 py-3 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-foreground/10 bg-foreground/3 px-4 py-3 text-sm text-muted-foreground">
               No project selected — you&apos;ll pick (or create) the project to connect a repository to when you hit Connect.
             </p>
           )}
@@ -754,7 +948,7 @@ export default function GithubPage() {
                 onChange={(e) => setRepoQuery(e.target.value)}
                 placeholder="Search repositories…"
                 aria-label="Search repositories"
-                className="w-full rounded-xl border border-foreground/10 bg-foreground/[0.03] py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none"
+                className="w-full rounded-xl border border-foreground/10 bg-foreground/3 py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none"
               />
             </div>
           )}
@@ -795,51 +989,20 @@ export default function GithubPage() {
           )}
 
           {/* Available repos to connect */}
-          <div>
-            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-sm font-semibold text-foreground">
-                {loadingRepos ? "Loading repositories…" : `Available repositories (${unconnectedRepos.length})`}
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                {activeProject ? (
-                  <>Connecting to <span className="font-medium text-primary">{activeProject.name}</span></>
-                ) : (
-                  "Choose a project on connect"
-                )}
-              </span>
-            </div>
-
-            {loadingRepos ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-14 animate-pulse rounded-xl border border-foreground/10 bg-foreground/[0.03]" />
-                ))}
-              </div>
-            ) : unconnectedRepos.length === 0 ? (
-              <div className="rounded-xl border border-foreground/10 py-12 text-center text-sm text-muted-foreground">
-                All accessible repositories are already connected.
-              </div>
-            ) : visibleUnconnected.length === 0 ? (
-              <div className="rounded-xl border border-foreground/10 py-12 text-center text-sm text-muted-foreground">
-                No repositories match “{debouncedRepoQuery}”.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-foreground/10 divide-y divide-foreground/5">
-                {visibleUnconnected.map((repo) => (
-                  <RepoRow
-                    key={repo.id}
-                    repo={repo}
-                    projectId={activeProjectId}
-                    installationId={installStatus.installation!.installationId}
-                    onConnected={(connected) => {
-                      utils.github.repositories.invalidate();
-                      setSelectedRepo(connected);
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          <AvailableReposSection
+            loadingRepos={loadingRepos}
+            unconnectedCount={unconnectedRepos.length}
+            activeProjectName={activeProject?.name}
+            unconnectedRepos={unconnectedRepos}
+            visibleUnconnected={visibleUnconnected}
+            debouncedRepoQuery={debouncedRepoQuery}
+            activeProjectId={activeProjectId}
+            installationId={installStatus.installation!.installationId}
+            onConnected={(connected) => {
+              utils.github.repositories.invalidate();
+              setSelectedRepo(connected);
+            }}
+          />
         </motion.div>
       )}
     </div>

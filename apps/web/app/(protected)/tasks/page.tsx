@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import type { RouterOutputs } from "@repo/trpc/client";
 
 import { ProjectTag, useActiveProject } from "~/components/shipflow/project-context";
 import { TasksListSkeleton } from "~/components/shipflow/page-skeletons";
@@ -14,6 +15,7 @@ import { statusLabel } from "~/components/shipflow/status";
 import { trpc } from "~/trpc/client";
 
 type FeatureStatus = keyof typeof statusLabel;
+type FeatureItem = RouterOutputs["feature"]["list"][number];
 
 type TaskFilter = "all" | "active" | "review" | "done" | "blocked";
 type TaskSort = "newest" | "oldest" | "title" | "priority";
@@ -35,6 +37,72 @@ const TASK_SORTS: ToolbarOption<TaskSort>[] = [
 
 // High → low ordering for the "Priority" sort.
 const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+
+function TaskFeatureCard({ feature }: Readonly<{ feature: FeatureItem }>) {
+  const status = feature.status as FeatureStatus;
+
+  return (
+    <motion.div variants={FADE_UP}>
+      <Link
+        href={`/features/${feature.id}?tab=tasks`}
+        className="group block border border-border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-foreground/3"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="truncate text-sm font-medium text-foreground">{feature.title}</h2>
+              <ProjectTag projectId={feature.projectId} className="shrink-0" />
+            </div>
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{feature.description}</p>
+          </div>
+          <StatusBadge status={status} />
+        </div>
+        <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          Open feature to view and manage tasks
+          <ArrowRight aria-hidden className="size-3.5 text-foreground/20 transition-colors group-hover:text-primary" />
+        </p>
+      </Link>
+    </motion.div>
+  );
+}
+
+function TasksListContent({
+  showSkeleton,
+  totalActiveCount,
+  visibleFeatures,
+}: Readonly<{
+  showSkeleton: boolean;
+  totalActiveCount: number;
+  visibleFeatures: FeatureItem[];
+}>) {
+  if (showSkeleton) {
+    return <TasksListSkeleton rows={3} />;
+  }
+
+  if (totalActiveCount === 0) {
+    return (
+      <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
+        <p className="text-sm text-muted-foreground">No tasks yet. Approve a PRD to generate engineering tasks.</p>
+      </motion.div>
+    );
+  }
+
+  if (visibleFeatures.length === 0) {
+    return (
+      <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
+        <p className="text-sm text-muted-foreground">No tasks match your search or filter.</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {visibleFeatures.map((feature) => (
+        <TaskFeatureCard key={feature.id} feature={feature} />
+      ))}
+    </div>
+  );
+}
 
 export default function TasksPage() {
   const { activeProjectId, activeProject, ready, isLoading: projectsLoading } = useActiveProject();
@@ -104,46 +172,11 @@ export default function TasksPage() {
         />
       ) : null}
 
-      {showSkeleton ? (
-        <TasksListSkeleton rows={3} />
-      ) : activeFeatures.length === 0 ? (
-        <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
-          <p className="text-sm text-muted-foreground">No tasks yet. Approve a PRD to generate engineering tasks.</p>
-        </motion.div>
-      ) : visible.length === 0 ? (
-        <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
-          <p className="text-sm text-muted-foreground">No tasks match your search or filter.</p>
-        </motion.div>
-      ) : (
-        <div className="space-y-3">
-          {visible.map((feature) => {
-            const status = feature.status as FeatureStatus;
-            return (
-              <motion.div variants={FADE_UP} key={feature.id}>
-                <Link
-                  href={`/features/${feature.id}?tab=tasks`}
-                  className="group block border border-border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-foreground/[0.03]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h2 className="truncate text-sm font-medium text-foreground">{feature.title}</h2>
-                        <ProjectTag projectId={feature.projectId} className="shrink-0" />
-                      </div>
-                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{feature.description}</p>
-                    </div>
-                    <StatusBadge status={status} />
-                  </div>
-                  <p className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    Open feature to view and manage tasks
-                    <ArrowRight aria-hidden className="size-3.5 text-foreground/20 transition-colors group-hover:text-primary" />
-                  </p>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+      <TasksListContent
+        showSkeleton={showSkeleton}
+        totalActiveCount={activeFeatures.length}
+        visibleFeatures={visible}
+      />
     </motion.div>
   );
 }

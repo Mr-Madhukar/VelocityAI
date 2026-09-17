@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, FileText, Loader2, Plus, Sparkles } from "lucide-react";
+import type { RouterOutputs } from "@repo/trpc/client";
 
 import { ProjectTag, useActiveProject } from "~/components/shipflow/project-context";
 import { LinkPending } from "~/components/shipflow/link-pending";
@@ -15,6 +16,7 @@ import { trpc } from "~/trpc/client";
 
 type PrdFilter = "all" | "generating" | "pending" | "active";
 type PrdSort = "newest" | "oldest" | "title";
+type FeatureItem = RouterOutputs["feature"]["list"][number];
 
 const PRD_FILTERS: ToolbarOption<PrdFilter>[] = [
   { value: "all", label: "All" },
@@ -28,6 +30,114 @@ const PRD_SORTS: ToolbarOption<PrdSort>[] = [
   { value: "oldest", label: "Oldest first" },
   { value: "title", label: "Title A–Z" },
 ];
+
+function getPrdStatusDescription(status: string): string {
+  if (status === "prd_generating") return "AI is writing the PRD…";
+  if (status === "prd_ready") return "Awaiting approval";
+  return "PRD workflow active";
+}
+
+function PrdStatusBadge({ status }: Readonly<{ status: string }>) {
+  if (status === "prd_generating") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
+        <Loader2 className="size-3 animate-spin" />
+        Generating
+      </span>
+    );
+  }
+
+  if (status === "prd_ready") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
+        <Clock className="size-3.5" /> Pending
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 border border-success/30 bg-success/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-success">
+      <CheckCircle2 className="size-3.5" /> Active
+    </span>
+  );
+}
+
+function PrdRow({ feature }: Readonly<{ feature: FeatureItem }>) {
+  const isGenerating = feature.status === "prd_generating";
+
+  return (
+    <motion.div variants={FADE_UP}>
+      <Link
+        href={`/features/${feature.id}?tab=prd`}
+        className="group flex items-center justify-between gap-4 border border-border bg-card px-5 py-4 transition-colors hover:border-foreground/20 hover:bg-foreground/3"
+      >
+        <div className="flex min-w-0 items-center gap-4">
+          <div
+            className={
+              isGenerating
+                ? "grid size-10 shrink-0 place-items-center border border-primary/30 bg-primary/10 text-primary"
+                : "grid size-10 shrink-0 place-items-center border border-border bg-foreground/3 text-muted-foreground transition-colors group-hover:text-primary"
+            }
+          >
+            {isGenerating ? <Sparkles className="size-5" /> : <FileText className="size-5" />}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-medium text-foreground">{feature.title}</p>
+              <ProjectTag projectId={feature.projectId} className="shrink-0" />
+            </div>
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+              {isGenerating ? <Loader2 className="size-3 animate-spin text-primary" /> : null}
+              {getPrdStatusDescription(feature.status)}
+            </p>
+          </div>
+        </div>
+
+        <PrdStatusBadge status={feature.status} />
+      </Link>
+    </motion.div>
+  );
+}
+
+function PrdListContent({
+  totalCount,
+  visibleFeatures,
+}: Readonly<{
+  totalCount: number;
+  visibleFeatures: FeatureItem[];
+}>) {
+  if (totalCount === 0) {
+    return (
+      <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
+        <p className="text-sm text-muted-foreground">No PRDs yet. Create a feature request to generate your first PRD.</p>
+        <Link
+          href="/features/new"
+          className="mt-6 inline-flex h-9 items-center gap-2 bg-primary px-4 text-sm font-medium text-primary-foreground transition-transform hover:opacity-95 active:scale-[0.97]"
+        >
+          <Plus className="size-4" />
+          Create feature
+          <LinkPending />
+        </Link>
+      </motion.div>
+    );
+  }
+
+  if (visibleFeatures.length === 0) {
+    return (
+      <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
+        <p className="text-sm text-muted-foreground">No PRDs match your search or filter.</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {visibleFeatures.map((feature) => (
+        <PrdRow key={feature.id} feature={feature} />
+      ))}
+    </div>
+  );
+}
 
 export default function PrdListPage() {
   const router = useRouter();
@@ -94,78 +204,7 @@ export default function PrdListPage() {
         />
       ) : null}
 
-      {withPrd.length === 0 ? (
-        <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
-          <p className="text-sm text-muted-foreground">No PRDs yet. Create a feature request to generate your first PRD.</p>
-          <Link
-            href="/features/new"
-            className="mt-6 inline-flex h-9 items-center gap-2 bg-primary px-4 text-sm font-medium text-primary-foreground transition-transform hover:opacity-95 active:scale-[0.97]"
-          >
-            <Plus className="size-4" />
-            Create feature
-            <LinkPending />
-          </Link>
-        </motion.div>
-      ) : visible.length === 0 ? (
-        <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
-          <p className="text-sm text-muted-foreground">No PRDs match your search or filter.</p>
-        </motion.div>
-      ) : (
-        <div className="grid gap-3">
-          {visible.map((feature) => {
-            const isGenerating = feature.status === "prd_generating";
-            return (
-              <motion.div variants={FADE_UP} key={feature.id}>
-                <Link
-                  href={`/features/${feature.id}?tab=prd`}
-                  className="group flex items-center justify-between gap-4 border border-border bg-card px-5 py-4 transition-colors hover:border-foreground/20 hover:bg-foreground/[0.03]"
-                >
-                  <div className="flex min-w-0 items-center gap-4">
-                    <div
-                      className={
-                        isGenerating
-                          ? "grid size-10 shrink-0 place-items-center border border-primary/30 bg-primary/10 text-primary"
-                          : "grid size-10 shrink-0 place-items-center border border-border bg-foreground/[0.03] text-muted-foreground transition-colors group-hover:text-primary"
-                      }
-                    >
-                      {isGenerating ? <Sparkles className="size-5" /> : <FileText className="size-5" />}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium text-foreground">{feature.title}</p>
-                        <ProjectTag projectId={feature.projectId} className="shrink-0" />
-                      </div>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {isGenerating ? <Loader2 className="size-3 animate-spin text-primary" /> : null}
-                        {isGenerating
-                          ? "AI is writing the PRD…"
-                          : feature.status === "prd_ready"
-                            ? "Awaiting approval"
-                            : "PRD workflow active"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {isGenerating ? (
-                    <span className="inline-flex shrink-0 items-center gap-1.5 border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
-                      <Loader2 className="size-3 animate-spin" />
-                      Generating
-                    </span>
-                  ) : feature.status === "prd_ready" ? (
-                    <span className="inline-flex shrink-0 items-center gap-1.5 border border-primary/30 bg-primary/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-primary">
-                      <Clock className="size-3.5" /> Pending
-                    </span>
-                  ) : (
-                    <span className="inline-flex shrink-0 items-center gap-1.5 border border-success/30 bg-success/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-success">
-                      <CheckCircle2 className="size-3.5" /> Active
-                    </span>
-                  )}
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+      <PrdListContent totalCount={withPrd.length} visibleFeatures={visible} />
     </motion.div>
   );
 }

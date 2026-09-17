@@ -20,9 +20,9 @@ function isNotFound(err: unknown): boolean {
 
 export default async function FeatureDetailPage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ featureId: string }>;
-}) {
+}>) {
   const { featureId } = await params;
 
   let feature;

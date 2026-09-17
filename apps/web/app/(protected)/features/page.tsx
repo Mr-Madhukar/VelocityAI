@@ -17,8 +17,11 @@ import {
 } from "~/components/shipflow/ui-kit";
 import { statusLabel } from "~/components/shipflow/status";
 import { trpc } from "~/trpc/client";
+import type { RouterOutputs } from "@repo/trpc/client";
 
 type FeatureStatus = keyof typeof statusLabel;
+
+type FeatureItem = RouterOutputs["feature"]["list"][number];
 
 function NewFeatureButton() {
   return (
@@ -30,6 +33,67 @@ function NewFeatureButton() {
       New feature
       <LinkPending />
     </Link>
+  );
+}
+
+function FeaturesContent({
+  showSkeleton,
+  features,
+  projectName,
+}: Readonly<{
+  showSkeleton: boolean;
+  features: FeatureItem[];
+  projectName?: string;
+}>) {
+  if (showSkeleton) {
+    return <CardGridSkeleton />;
+  }
+
+  if (features.length === 0) {
+    return (
+      <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          {projectName ? `No feature requests in ${projectName} yet.` : "No feature requests yet."}
+        </p>
+        <div className="mt-4 flex justify-center">
+          <NewFeatureButton />
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {features.map((feature) => {
+        const status = feature.status as FeatureStatus;
+        return (
+          <motion.div variants={FADE_UP} key={feature.id}>
+            <Link
+              href={`/features/${feature.id}`}
+              className="group flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-foreground/3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-base font-medium text-foreground">{feature.title}</h2>
+                <StatusBadge status={status} />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <ProjectTag projectId={feature.projectId} />
+                <EffortBadge hours={feature.estimatedHours} />
+                <ComplianceBadge score={feature.complianceScore} />
+              </div>
+              <p className="mt-3 line-clamp-3 flex-1 text-sm leading-6 text-muted-foreground">{feature.description}</p>
+              <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
+                <span className="capitalize">{feature.priority} priority</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {new Date(feature.createdAt).toLocaleDateString("en-IN")}
+                  <ArrowRight aria-hidden className="size-3.5 text-foreground/20 transition-colors group-hover:text-primary" />
+                </span>
+              </div>
+            </Link>
+          </motion.div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -53,7 +117,7 @@ export default function FeaturesPage() {
 
       <motion.div
         variants={FADE_UP}
-        className="flex flex-col gap-3 border border-primary/30 bg-primary/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between"
+        className="flex flex-col gap-3 border border-primary/30 bg-primary/6 p-5 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
@@ -68,50 +132,11 @@ export default function FeaturesPage() {
         </div>
       </motion.div>
 
-      {showSkeleton ? (
-        <CardGridSkeleton />
-      ) : features.length === 0 ? (
-        <motion.div variants={FADE_UP} className="border border-border bg-card p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            {activeProject ? `No feature requests in ${activeProject.name} yet.` : "No feature requests yet."}
-          </p>
-          <div className="mt-4 flex justify-center">
-            <NewFeatureButton />
-          </div>
-        </motion.div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {features.map((feature) => {
-            const status = feature.status as FeatureStatus;
-            return (
-              <motion.div variants={FADE_UP} key={feature.id}>
-                <Link
-                  href={`/features/${feature.id}`}
-                  className="group flex h-full flex-col border border-border bg-card p-5 transition-colors hover:border-foreground/20 hover:bg-foreground/[0.03]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h2 className="text-base font-medium text-foreground">{feature.title}</h2>
-                    <StatusBadge status={status} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <ProjectTag projectId={feature.projectId} />
-                    <EffortBadge hours={feature.estimatedHours} />
-                    <ComplianceBadge score={feature.complianceScore} />
-                  </div>
-                  <p className="mt-3 line-clamp-3 flex-1 text-sm leading-6 text-muted-foreground">{feature.description}</p>
-                  <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="capitalize">{feature.priority} priority</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      {new Date(feature.createdAt).toLocaleDateString("en-IN")}
-                      <ArrowRight aria-hidden className="size-3.5 text-foreground/20 transition-colors group-hover:text-primary" />
-                    </span>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+      <FeaturesContent
+        showSkeleton={showSkeleton}
+        features={features}
+        projectName={activeProject?.name}
+      />
     </motion.div>
   );
 }

@@ -5,4 +5,5 @@ import { ContentSkeleton } from "~/components/shipflow/page-skeletons";
 // Pages with their own loading.tsx get a layout-matched skeleton instead.
 export default function ProtectedLoading() {
   return <ContentSkeleton />;
+  
 }

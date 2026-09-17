@@ -21,7 +21,7 @@ export default async function SettingsPage() {
       <div className="max-w-2xl space-y-6">
 
         {/* Account */}
-        <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+        <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
           <h2 className="mb-4 text-sm font-semibold text-foreground">Account</h2>
           <div className="flex items-center gap-3">
             {session?.user.image ? (
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
 
         {/* Active org settings */}
         {currentOrg && (
-          <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+          <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
             <h2 className="mb-1 text-sm font-semibold text-foreground">Organization settings</h2>
             <p className="mb-4 text-xs text-muted-foreground">
               Edit the name and slug for <span className="text-foreground/80">{currentOrg.name}</span>.
@@ -54,7 +54,7 @@ export default async function SettingsPage() {
         <ProjectsSection />
 
         {/* All orgs + create */}
-        <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+        <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
           <h2 className="mb-4 text-sm font-semibold text-foreground">Your organizations</h2>
           {orgs.length === 0 ? (
             <p className="mb-4 text-sm text-muted-foreground">No organizations yet.</p>

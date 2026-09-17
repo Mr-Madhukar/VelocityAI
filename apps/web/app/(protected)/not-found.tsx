@@ -25,7 +25,7 @@ export default function NotFound() {
   return (
     <div className="grid min-h-[60vh] place-items-center px-4">
       <div className="flex max-w-md flex-col items-center text-center">
-        <div className="grid size-14 place-items-center rounded-2xl border border-border bg-foreground/[0.03] text-muted-foreground">
+        <div className="grid size-14 place-items-center rounded-2xl border border-border bg-foreground/3 text-muted-foreground">
           <FileQuestion className="size-7" />
         </div>
         <h1 className="mt-6 text-lg font-semibold text-foreground">
@@ -38,7 +38,7 @@ export default function NotFound() {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/features"
-            className="inline-flex h-9 items-center gap-2 border border-border bg-foreground/[0.03] px-4 text-sm font-medium text-foreground transition-colors hover:bg-foreground/[0.06]"
+            className="inline-flex h-9 items-center gap-2 border border-border bg-foreground/3 px-4 text-sm font-medium text-foreground transition-colors hover:bg-foreground/6"
           >
             <ArrowLeft className="size-4" />
             Back to features

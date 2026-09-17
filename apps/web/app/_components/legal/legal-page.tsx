@@ -3,17 +3,27 @@ import type { ReactNode } from "react";
 import { LandingNav } from "../landing/nav";
 import { LandingFooter } from "../landing/footer";
 
+function getLegalItemKey(item: ReactNode, index: number): string {
+  if (typeof item === "string") {
+    return item;
+  }
+  if (typeof item === "number") {
+    return `legal-${item}`;
+  }
+  return `legal-${index}`;
+}
+
 export function LegalPage({
   title,
   updated,
   intro,
   children,
-}: {
+}: Readonly<{
   title: string;
   updated: string;
   intro?: ReactNode;
   children: ReactNode;
-}) {
+}>) {
   return (
     <main className="relative flex min-h-screen flex-col overflow-x-hidden">
       <LandingNav />
@@ -42,11 +52,11 @@ export function LegalSection({
   n,
   heading,
   children,
-}: {
+}: Readonly<{
   n: number;
   heading: string;
   children: ReactNode;
-}) {
+}>) {
   return (
     <section className="space-y-3 scroll-mt-24">
       <h2 className="text-lg font-semibold tracking-tight text-foreground">
@@ -58,11 +68,11 @@ export function LegalSection({
   );
 }
 
-export function LegalList({ items }: { items: ReactNode[] }) {
+export function LegalList({ items }: Readonly<{ items: readonly ReactNode[] }>) {
   return (
     <ul className="space-y-2">
       {items.map((item, i) => (
-        <li key={i} className="flex gap-2.5">
+        <li key={getLegalItemKey(item, i)} className="flex gap-2.5">
           <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-muted-foreground/60" />
           <span>{item}</span>
         </li>
