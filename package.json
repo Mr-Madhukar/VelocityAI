@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "dotenv -- turbo build",
+    "start": "pnpm --filter @shipflow/web start",
     "dev": "dotenv -- turbo dev",
     "dev:all": "dotenv -- concurrently --names \"turbo,ngrok\" --prefix-colors \"cyan,yellow\" \"turbo dev\" \"ngrok http --domain=setback-datebook-uniformed.ngrok-free.dev 3000\"",
     "dev:tunnel": "dotenv -- ngrok http --domain=setback-datebook-uniformed.ngrok-free.dev 3000",

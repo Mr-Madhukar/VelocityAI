@@ -41,8 +41,8 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI
-      ? "pnpm --filter web start"
-      : "pnpm --filter web dev",
+      ? "pnpm --filter @shipflow/web start"
+      : "pnpm --filter @shipflow/web dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
