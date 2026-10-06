@@ -462,6 +462,7 @@ function GithubAppCardBody({
   }
 
   if (installed) {
+    const validInstallationId = typeof installationId === "number" && installationId > 0 ? installationId : null;
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-success/10 p-4">
@@ -473,10 +474,10 @@ function GithubAppCardBody({
             )}
           </div>
         </div>
-        {Boolean(installationId) && (
+        {validInstallationId !== null && (
           <button
             type="button"
-            onClick={() => onOpenPopup(getManageUrl(installationId))}
+            onClick={() => onOpenPopup(getManageUrl(validInstallationId))}
             className="inline-flex items-center gap-1.5 rounded-lg border border-foreground/10 bg-foreground/5 px-3 py-1.5 text-xs text-foreground/80 transition hover:bg-foreground/10"
           >
             <Settings className="size-3.5" />
@@ -713,8 +714,8 @@ export default function GithubPage() {
     setSavingInstallation(false);
     if (res.ok) {
       toast.success("GitHub installation connected");
-      refetch();
-      utils.github.repositories.invalidate();
+      await refetch();
+      await utils.github.repositories.invalidate();
     } else {
       toast.error(res.error);
     }
@@ -834,8 +835,8 @@ export default function GithubPage() {
     const timer = window.setInterval(() => {
       if (popup.closed) {
         window.clearInterval(timer);
-        refetch();
-        utils.github.repositories.invalidate();
+        void refetch();
+        void utils.github.repositories.invalidate();
         const id = installationIdRef.current;
         if (id) void loadGithubRepos(id);
       }
@@ -999,7 +1000,7 @@ export default function GithubPage() {
             activeProjectId={activeProjectId}
             installationId={installStatus.installation!.installationId}
             onConnected={(connected) => {
-              utils.github.repositories.invalidate();
+              void utils.github.repositories.invalidate();
               setSelectedRepo(connected);
             }}
           />
