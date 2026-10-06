@@ -32,7 +32,7 @@ function slugify(value: string) {
  * Square, token-driven dialog that creates a project via `project.create`.
  * `trigger` is rendered as the dialog opener (e.g. the PageHeader CTA).
  */
-export function CreateProjectDialog({ trigger }: { trigger: React.ReactNode }) {
+export function CreateProjectDialog({ trigger }: Readonly<{ trigger: React.ReactNode }>) {
   const utils = trpc.useUtils();
   const { setActiveProjectId } = useActiveProject();
   const [open, setOpen] = useState(false);

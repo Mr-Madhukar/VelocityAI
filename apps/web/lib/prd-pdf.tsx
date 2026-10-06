@@ -110,13 +110,13 @@ function ListSection({
   audience,
   items,
   variant = "bullet",
-}: {
+}: Readonly<{
   title: string;
   subtitle?: string;
   audience?: string;
   items: string[];
   variant?: "bullet" | "numbered";
-}) {
+}>) {
   if (!items || items.length === 0) return null;
   return (
     <View style={styles.section} wrap={false}>
@@ -126,7 +126,7 @@ function ListSection({
       </View>
       {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
       {items.map((item, i) => (
-        <View key={i} style={styles.row}>
+        <View key={`${title}-${item}`} style={styles.row}>
           <Text style={variant === "numbered" ? styles.markerAccent : styles.marker}>
             {variant === "numbered" ? `${i + 1}.` : "•"}
           </Text>
@@ -137,7 +137,7 @@ function ListSection({
   );
 }
 
-function PrdPdfDocument({ data }: { data: PrdDocumentData }) {
+function PrdPdfDocument({ data }: Readonly<{ data: PrdDocumentData }>) {
   const approved = Boolean(data.approvedAt);
   const meta: { label: string; value: string }[] = [
     { label: "Version", value: `v${data.version}` },

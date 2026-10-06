@@ -32,7 +32,7 @@ export function ListToolbar<F extends string, S extends string>({
   sortOptions,
   activeSort,
   onSortChange,
-}: {
+}: Readonly<{
   search: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
@@ -42,7 +42,7 @@ export function ListToolbar<F extends string, S extends string>({
   sortOptions?: ToolbarOption<S>[];
   activeSort?: S;
   onSortChange?: (value: S) => void;
-}) {
+}>) {
   const activeSortLabel =
     sortOptions?.find((option) => option.value === activeSort)?.label ?? "Sort";
 
@@ -51,11 +51,11 @@ export function ListToolbar<F extends string, S extends string>({
     // top nav), with a blurred background band so scrolling content never
     // peeks through above the bar.
     <div className="sticky top-0 z-20 -mx-1 bg-background/80 px-1 py-3 backdrop-blur-md">
-      <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-card/90 p-1.5 shadow-sm ring-1 ring-black/[0.02]">
+      <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-card/90 p-1.5 shadow-sm ring-1 ring-black/2">
         {/* LEFT — filters + sort (grows to fill the row) */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {filters && onFilterChange ? (
-            <div className="flex flex-1 items-center gap-0.5 rounded-lg bg-foreground/[0.04] p-1">
+            <div className="flex flex-1 items-center gap-0.5 rounded-lg bg-foreground/4 p-1">
               {filters.map((filter) => {
                 const active = activeFilter === filter.value;
                 return (

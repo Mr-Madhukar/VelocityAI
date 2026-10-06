@@ -57,7 +57,7 @@ function initials(name: string | null) {
     .toUpperCase();
 }
 
-function Avatar({ name, image, mine }: { name: string | null; image: string | null; mine: boolean }) {
+function Avatar({ name, image, mine }: Readonly<{ name: string | null; image: string | null; mine: boolean }>) {
   if (image) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={image} alt={name ?? ""} className="size-8 shrink-0 rounded-full object-cover ring-1 ring-foreground/10" />;
@@ -74,7 +74,7 @@ function Avatar({ name, image, mine }: { name: string | null; image: string | nu
   );
 }
 
-function MiniAvatar({ name, image }: { name: string | null; image: string | null }) {
+function MiniAvatar({ name, image }: Readonly<{ name: string | null; image: string | null }>) {
   if (image) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={image} alt={name ?? ""} className="size-5 rounded-full object-cover ring-2 ring-popover" />;
@@ -88,12 +88,12 @@ function MiniAvatar({ name, image }: { name: string | null; image: string | null
 
 // Slack-style message row: avatar + bold name + time, then plain wrapped text.
 // The current user's own messages get a subtle highlight.
-function NoteRow({ note, mine }: { note: Note; mine: boolean }) {
+function NoteRow({ note, mine }: Readonly<{ note: Note; mine: boolean }>) {
   return (
     <div
       className={cn(
         "flex gap-2.5 rounded-md px-2 py-1.5 transition-colors",
-        mine ? "bg-primary/[0.06]" : "hover:bg-foreground/[0.03]",
+        mine ? "bg-primary/6" : "hover:bg-foreground/3",
       )}
     >
       <Avatar name={note.authorName} image={note.authorImage} mine={mine} />
@@ -104,7 +104,7 @@ function NoteRow({ note, mine }: { note: Note; mine: boolean }) {
           </span>
           <span className="font-mono text-[10px] text-muted-foreground">{timeAgo(note.createdAt)}</span>
         </div>
-        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90">
+        <p className="mt-0.5 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-foreground/90">
           {note.content}
         </p>
       </div>
@@ -114,7 +114,7 @@ function NoteRow({ note, mine }: { note: Note; mine: boolean }) {
 
 // Inline composer used inside an expanded thread. Holds its own draft so each
 // thread's reply box is independent.
-function ThreadComposer({ onSubmit, pending }: { onSubmit: (content: string) => void; pending: boolean }) {
+function ThreadComposer({ onSubmit, pending }: Readonly<{ onSubmit: (content: string) => void; pending: boolean }>) {
   const [value, setValue] = useState("");
   function submit() {
     const content = value.trim();
@@ -145,15 +145,78 @@ function ThreadComposer({ onSubmit, pending }: { onSubmit: (content: string) => 
   );
 }
 
+function renderEmptyOrLoadingNotes(isLoading: boolean) {
+  if (isLoading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-32 flex-col items-center justify-center gap-2 text-center">
+      <MessageSquareText className="size-6 text-muted-foreground/40" />
+      <p className="text-sm text-muted-foreground">No notes yet. Start the discussion below.</p>
+    </div>
+  );
+}
+
+function renderThreadReplyToggle(
+  repliesCount: number,
+  repliers: Note[],
+  isExpanded: boolean,
+  lastReply: Note | undefined,
+  onToggle: () => void,
+) {
+  if (repliesCount > 0) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mt-0.5 inline-flex cursor-pointer items-center gap-2 rounded-md py-1 pl-1 pr-2 transition-colors hover:bg-foreground/5"
+      >
+        <div className="flex -space-x-1.5">
+          {repliers.map((r) => (
+            <MiniAvatar key={r.id} name={r.authorName} image={r.authorImage} />
+          ))}
+        </div>
+        <span className="text-xs font-semibold text-primary">
+          {repliesCount} {repliesCount === 1 ? "reply" : "replies"}
+        </span>
+        {lastReply ? (
+          <span className="text-[11px] text-muted-foreground">
+            Last reply {timeAgo(lastReply.createdAt)}
+          </span>
+        ) : null}
+        <ChevronRight
+          className={cn("size-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")}
+        />
+      </button>
+    );
+  }
+  if (!isExpanded) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mt-0.5 inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Reply
+      </button>
+    );
+  }
+  return null;
+}
+
 export function TaskNotesModal({
   task,
   open,
   onOpenChange,
-}: {
+}: Readonly<{
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) {
+}>) {
   const utils = trpc.useUtils();
   const { data: session } = authClient.useSession();
   const currentUserId = session?.user?.id ?? null;
@@ -266,20 +329,12 @@ export function TaskNotesModal({
           data-lenis-prevent
           className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4"
         >
-          {isLoading ? (
-            <div className="flex h-32 items-center justify-center">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : topLevel.length === 0 ? (
-            <div className="flex h-32 flex-col items-center justify-center gap-2 text-center">
-              <MessageSquareText className="size-6 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No notes yet. Start the discussion below.</p>
-            </div>
-          ) : (
-            topLevel.map((note) => {
+          {isLoading || topLevel.length === 0
+            ? renderEmptyOrLoadingNotes(isLoading)
+            : topLevel.map((note) => {
               const replies = repliesByRoot.get(note.id) ?? [];
               const isExpanded = expanded.has(note.id);
-              const lastReply = replies[replies.length - 1];
+              const lastReply = replies.at(-1);
 
               // Unique repliers (for the stacked avatars), most recent first.
               const repliers: Note[] = [];
@@ -296,38 +351,13 @@ export function TaskNotesModal({
                   <NoteRow note={note} mine={note.userId === currentUserId} />
 
                   <div className={threadIndent}>
-                    {replies.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleThread(note.id)}
-                        className="mt-0.5 inline-flex cursor-pointer items-center gap-2 rounded-md py-1 pl-1 pr-2 transition-colors hover:bg-foreground/[0.05]"
-                      >
-                        <div className="flex -space-x-1.5">
-                          {repliers.map((r) => (
-                            <MiniAvatar key={r.id} name={r.authorName} image={r.authorImage} />
-                          ))}
-                        </div>
-                        <span className="text-xs font-semibold text-primary">
-                          {replies.length} {replies.length === 1 ? "reply" : "replies"}
-                        </span>
-                        {lastReply ? (
-                          <span className="text-[11px] text-muted-foreground">
-                            Last reply {timeAgo(lastReply.createdAt)}
-                          </span>
-                        ) : null}
-                        <ChevronRight
-                          className={cn("size-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")}
-                        />
-                      </button>
-                    ) : !isExpanded ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleThread(note.id)}
-                        className="mt-0.5 inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        Reply
-                      </button>
-                    ) : null}
+                    {renderThreadReplyToggle(
+                      replies.length,
+                      repliers,
+                      isExpanded,
+                      lastReply,
+                      () => toggleThread(note.id),
+                    )}
 
                     {isExpanded ? (
                       <div className="mt-1 space-y-0.5 border-l-2 border-border pl-2">
@@ -343,8 +373,7 @@ export function TaskNotesModal({
                   </div>
                 </div>
               );
-            })
-          )}
+            })}
         </div>
 
         {/* New-note composer */}
@@ -375,7 +404,7 @@ export function TaskNotesModal({
   );
 }
 
-function StatusPill({ status }: { status: string }) {
+function StatusPill({ status }: Readonly<{ status: string }>) {
   const label = TASK_STATUS_LABEL[status] ?? status.replace("_", " ");
   return (
     <span

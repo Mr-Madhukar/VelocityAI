@@ -244,9 +244,8 @@ export const featureRouter = router({
         })),
       ];
 
-      return items
-        .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-        .slice(0, limit);
+      items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+      return items.slice(0, limit);
     }),
 
   getById: orgProcedure

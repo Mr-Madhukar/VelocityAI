@@ -77,7 +77,7 @@ export function eventMatchesShortcut(
   shortcut: string,
 ): boolean {
   const parts = shortcut.split("+");
-  const key = parts[parts.length - 1]!;
+  const key = parts.at(-1)!;
   const needAlt = parts.includes("alt");
   const needShift = parts.includes("shift");
 

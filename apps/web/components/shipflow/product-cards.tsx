@@ -10,17 +10,27 @@ import type {
 import { cn } from "~/lib/utils";
 import { reviewTone, statusLabel, statusTone } from "./status";
 
+function renderFindingIcon(severity: string) {
+  if (severity === "blocking") {
+    return <TriangleAlert className="size-3 text-destructive" />;
+  }
+  if (severity === "positive") {
+    return <Star className="size-3 text-success" />;
+  }
+  return <Bot className="size-3 text-amber-600 dark:text-amber-300" />;
+}
+
 export function MetricCard({
   label,
   value,
   detail,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   detail: string;
-}) {
+}>) {
   return (
-    <div className="rounded-lg border border-foreground/10 bg-foreground/[0.055] p-4 shadow-2xl shadow-black/20">
+    <div className="rounded-lg border border-foreground/10 bg-foreground/5.5 p-4 shadow-2xl shadow-black/20">
       <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
       <p className="mt-4 text-3xl font-semibold text-foreground">{value}</p>
       <p className="mt-2 text-sm text-muted-foreground">{detail}</p>
@@ -28,11 +38,11 @@ export function MetricCard({
   );
 }
 
-export function FeatureCard({ feature }: { feature: DemoFeature }) {
+export function FeatureCard({ feature }: Readonly<{ feature: DemoFeature }>) {
   return (
     <Link
       href={`/features/${feature.id}`}
-      className="block rounded-lg border border-foreground/10 bg-foreground/[0.045] p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-foreground/[0.07]"
+      className="block rounded-lg border border-foreground/10 bg-foreground/4.5 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-foreground/7"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -54,7 +64,7 @@ export function FeatureCard({ feature }: { feature: DemoFeature }) {
   );
 }
 
-export function RepositoryRow({ repo }: { repo: DemoRepository }) {
+export function RepositoryRow({ repo }: Readonly<{ repo: DemoRepository }>) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-foreground/10 bg-muted p-4">
       <div>
@@ -75,7 +85,7 @@ export function RepositoryRow({ repo }: { repo: DemoRepository }) {
   );
 }
 
-export function TaskBoard({ tasks }: { tasks: DemoTask[] }) {
+export function TaskBoard({ tasks }: Readonly<{ tasks: DemoTask[] }>) {
   const columns: Array<{ key: DemoTask["status"]; title: string }> = [
     { key: "todo", title: "Todo" },
     { key: "in_progress", title: "In progress" },
@@ -86,7 +96,7 @@ export function TaskBoard({ tasks }: { tasks: DemoTask[] }) {
   return (
     <div className="grid gap-4 xl:grid-cols-4">
       {columns.map((column) => (
-        <div key={column.key} className="rounded-lg border border-foreground/10 bg-foreground/[0.035]">
+        <div key={column.key} className="rounded-lg border border-foreground/10 bg-foreground/3.5">
           <div className="border-b border-foreground/10 px-4 py-3">
             <p className="font-medium text-foreground">{column.title}</p>
           </div>
@@ -110,9 +120,9 @@ export function TaskBoard({ tasks }: { tasks: DemoTask[] }) {
   );
 }
 
-export function ReviewCard({ review }: { review: DemoReview }) {
+export function ReviewCard({ review }: Readonly<{ review: DemoReview }>) {
   return (
-    <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+    <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <GitPullRequestArrow className="size-4 text-primary" />
@@ -127,13 +137,7 @@ export function ReviewCard({ review }: { review: DemoReview }) {
         {review.findings.map((finding) => (
           <div key={`${finding.file}-${finding.message}`} className="rounded-md border border-foreground/10 bg-muted p-3">
             <div className="flex items-center gap-2 text-xs">
-              {finding.severity === "blocking" ? (
-                <TriangleAlert className="size-3 text-destructive" />
-              ) : finding.severity === "positive" ? (
-                <Star className="size-3 text-success" />
-              ) : (
-                <Bot className="size-3 text-amber-600 dark:text-amber-300" />
-              )}
+              {renderFindingIcon(finding.severity)}
               <span className="text-muted-foreground">{finding.file}</span>
             </div>
             <p className="mt-1 text-sm text-foreground">{finding.message}</p>

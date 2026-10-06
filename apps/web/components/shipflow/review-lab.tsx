@@ -5,6 +5,30 @@ import { GitPullRequestArrow, Loader2 } from "lucide-react";
 
 import { trpc } from "~/trpc/client";
 
+function renderReviewResult(
+  data?: { summary: string; findings: Array<{ file: string; message: string; severity: string }> } | null,
+  error?: { message: string } | null,
+) {
+  if (data) {
+    return (
+      <>
+        <p className="text-sm font-medium text-foreground">{data.summary}</p>
+        <div className="mt-3 space-y-2">
+          {data.findings.map((finding) => (
+            <div key={`${finding.file}-${finding.message}`} className="rounded-md bg-foreground/5 p-3 text-sm text-foreground">
+              <span className="text-primary">{finding.severity}</span> · {finding.file}: {finding.message}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+  if (error) {
+    return <p className="text-sm text-destructive">{error.message}</p>;
+  }
+  return <p className="text-sm text-foreground/80">Waiting for review result...</p>;
+}
+
 export function ReviewLab() {
   const [enabled, setEnabled] = useState(false);
   const input = useMemo(
@@ -55,22 +79,7 @@ export function ReviewLab() {
 
       {enabled ? (
         <div className="mt-5 rounded-md border border-foreground/10 bg-muted p-4">
-          {reviewMutation.data ? (
-            <>
-              <p className="text-sm font-medium text-foreground">{reviewMutation.data.summary}</p>
-              <div className="mt-3 space-y-2">
-                {reviewMutation.data.findings.map((finding) => (
-                  <div key={`${finding.file}-${finding.message}`} className="rounded-md bg-foreground/5 p-3 text-sm text-foreground">
-                    <span className="text-primary">{finding.severity}</span> · {finding.file}: {finding.message}
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : reviewMutation.error ? (
-            <p className="text-sm text-destructive">{reviewMutation.error.message}</p>
-          ) : (
-            <p className="text-sm text-foreground/80">Waiting for review result...</p>
-          )}
+          {renderReviewResult(reviewMutation.data, reviewMutation.error)}
         </div>
       ) : null}
     </div>

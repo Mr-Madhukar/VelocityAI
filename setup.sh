@@ -11,10 +11,8 @@ for dir in apps/* packages/*; do
   if [[ -d "$dir" ]]; then
     target="$dir/.env"
     # Only link if target does not exist or is not already a symlink to the right location.
-    if [[ ! -L "$target" || "$(readlink -- "$target")" != "$(realpath .env)" ]]; then
-      if [[ ! -e "$target" ]]; then
-        ln -s "$(realpath .env)" "$target"
-      fi
+    if [[ ( ! -L "$target" || "$(readlink -- "$target")" != "$(realpath .env)" ) && ! -e "$target" ]]; then
+      ln -s "$(realpath .env)" "$target"
     fi
   fi
 done

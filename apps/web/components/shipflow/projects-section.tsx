@@ -17,6 +17,39 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+function renderProjectsList(
+  isLoading: boolean,
+  projects: Array<{ id: string; name: string; description: string | null; slug: string }>,
+) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+        <Loader2 className="size-3 animate-spin" /> Loading…
+      </div>
+    );
+  }
+  if (projects.length > 0) {
+    return (
+      <div className="mb-5 divide-y divide-foreground/5 rounded-lg border border-foreground/10">
+        {projects.map((p) => (
+          <div key={p.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">{p.name}</p>
+              {p.description && (
+                <p className="text-xs text-muted-foreground">{p.description}</p>
+              )}
+            </div>
+            <span className="font-mono text-xs text-muted-foreground">/{p.slug}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <p className="mb-4 text-sm text-muted-foreground">No projects yet. Create one to start submitting feature requests.</p>
+  );
+}
+
 export function ProjectsSection() {
   const utils = trpc.useUtils();
   const { data: projects = [], isLoading } = trpc.project.list.useQuery();
@@ -28,7 +61,7 @@ export function ProjectsSection() {
       toast.success(`Project "${p?.name}" created`);
       setName("");
       setDescription("");
-      utils.project.list.invalidate();
+      void utils.project.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -36,30 +69,10 @@ export function ProjectsSection() {
   const slug = slugify(name);
 
   return (
-    <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-5">
+    <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-5">
       <h2 className="mb-4 text-sm font-semibold text-foreground">Projects</h2>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3 animate-spin" /> Loading…
-        </div>
-      ) : projects.length > 0 ? (
-        <div className="mb-5 divide-y divide-foreground/5 rounded-lg border border-foreground/10">
-          {projects.map((p) => (
-            <div key={p.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">{p.name}</p>
-                {p.description && (
-                  <p className="text-xs text-muted-foreground">{p.description}</p>
-                )}
-              </div>
-              <span className="font-mono text-xs text-muted-foreground">/{p.slug}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mb-4 text-sm text-muted-foreground">No projects yet. Create one to start submitting feature requests.</p>
-      )}
+      {renderProjectsList(isLoading, projects)}
 
       <form
         onSubmit={(e) => {

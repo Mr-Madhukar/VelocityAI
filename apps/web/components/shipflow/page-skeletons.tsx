@@ -1,13 +1,17 @@
 import { cn } from "~/lib/utils";
 
+function skeletonKeys(count: number, prefix: string): string[] {
+  return Array.from({ length: count }, (_, i) => `${prefix}-${i}`);
+}
+
 /** Shimmer block — the atom for every page skeleton. */
-function Bar({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse bg-foreground/[0.06]", className)} />;
+function Bar({ className }: Readonly<{ className?: string }>) {
+  return <div className={cn("animate-pulse bg-foreground/6", className)} />;
 }
 
 /** Static (non-pulsing) bordered box — mirrors the icon containers in the real UI. */
-function Box({ className }: { className?: string }) {
-  return <div className={cn("border border-border bg-foreground/[0.03]", className)} />;
+function Box({ className }: Readonly<{ className?: string }>) {
+  return <div className={cn("border border-border bg-foreground/3", className)} />;
 }
 
 /** Mirrors <PageHeader>: big title + description + optional action. */
@@ -40,8 +44,8 @@ export function StatTileSkeleton() {
 function StatTilesRow() {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <StatTileSkeleton key={i} />
+      {skeletonKeys(4, "stat-tile").map((key) => (
+        <StatTileSkeleton key={key} />
       ))}
     </div>
   );
@@ -78,9 +82,9 @@ function PipelineBandSkeleton() {
     <div>
       <Bar className="mb-2 h-2.5 w-32" />
       <div className="grid grid-cols-2 overflow-hidden border border-border bg-card sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {skeletonKeys(5, "pipeline-cell").map((key) => (
           <div
-            key={i}
+            key={key}
             className="border-b border-border p-4 last:border-b-0 sm:border-b-0 lg:border-r lg:last:border-r-0"
           >
             <Bar className="h-2.5 w-12" />
@@ -96,7 +100,7 @@ function PipelineBandSkeleton() {
 function ActiveFeaturesSkeleton() {
   return (
     <div className="overflow-hidden border border-border bg-card">
-      <div className="flex items-center justify-between gap-3 border-b border-border bg-foreground/[0.02] px-5 py-4">
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-foreground/2 px-5 py-4">
         <div className="space-y-2">
           <Bar className="h-4 w-28" />
           <Bar className="h-3 w-44" />
@@ -104,8 +108,8 @@ function ActiveFeaturesSkeleton() {
         <Bar className="hidden h-9 w-32 sm:block" />
       </div>
       <div className="divide-y divide-border">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="grid gap-4 px-5 py-4 md:grid-cols-[1.5fr_0.7fr_0.7fr] md:items-center">
+        {skeletonKeys(5, "active-feature").map((key) => (
+          <div key={key} className="grid gap-4 px-5 py-4 md:grid-cols-[1.5fr_0.7fr_0.7fr] md:items-center">
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
                 <Bar className="h-4 w-40" />
@@ -142,7 +146,7 @@ export function DashboardSkeleton() {
 // Mirrors the "AI intake starts here" tinted banner.
 function IntakeBannerSkeleton() {
   return (
-    <div className="space-y-3 border border-primary/30 bg-primary/[0.06] p-5">
+    <div className="space-y-3 border border-primary/30 bg-primary/6 p-5">
       <Bar className="h-4 w-44" />
       <Bar className="h-3 w-full max-w-2xl" />
       <Bar className="h-3 w-2/3 max-w-2xl" />
@@ -172,11 +176,11 @@ function FeatureCardSkeleton() {
 }
 
 /** Feature card grid (inline list area of the features page). */
-export function CardGridSkeleton({ count = 6 }: { count?: number }) {
+export function CardGridSkeleton({ count = 6 }: Readonly<{ count?: number }>) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <FeatureCardSkeleton key={i} />
+      {skeletonKeys(count, "feature-card").map((key) => (
+        <FeatureCardSkeleton key={key} />
       ))}
     </div>
   );
@@ -195,33 +199,39 @@ export function GridPageSkeleton() {
 
 /** ───────────────────────── Projects ───────────────────────── */
 
-// Mirrors a project card: icon box + arrow, name, /slug, description, footer meta.
+// Mirrors a project card: folder icon + name, description, tags, members.
 function ProjectCardSkeleton() {
   return (
     <div className="flex flex-col border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-3">
-        <Box className="size-9" />
-        <Bar className="size-4" />
+        <div className="flex items-center gap-2.5">
+          <Box className="size-8" />
+          <Bar className="h-4 w-32" />
+        </div>
+        <Bar className="h-5 w-12" />
       </div>
-      <Bar className="mt-4 h-4 w-1/2" />
-      <Bar className="mt-1.5 h-2.5 w-20" />
-      <div className="mt-2 space-y-2">
+      <div className="mt-3 space-y-2">
         <Bar className="h-3 w-full" />
-        <Bar className="h-3 w-2/3" />
+        <Bar className="h-3 w-4/5" />
       </div>
-      <div className="mt-4 border-t border-border pt-3">
-        <Bar className="h-2.5 w-24" />
+      <div className="mt-5 flex items-center justify-between">
+        <Bar className="h-3 w-24" />
+        <div className="flex -space-x-1.5">
+          {skeletonKeys(3, "avatar").map((key) => (
+            <Bar key={key} className="size-6 rounded-full" />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 /** Project card grid (inline list area of the projects page). */
-export function ProjectsGridSkeleton({ count = 6 }: { count?: number }) {
+export function ProjectsGridSkeleton({ count = 6 }: Readonly<{ count?: number }>) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <ProjectCardSkeleton key={i} />
+      {skeletonKeys(count, "project-card").map((key) => (
+        <ProjectCardSkeleton key={key} />
       ))}
     </div>
   );
@@ -258,18 +268,18 @@ function TaskCardSkeleton() {
 }
 
 /** Task card list (inline list area of the tasks page). */
-export function TasksListSkeleton({ rows = 3 }: { rows?: number }) {
+export function TasksListSkeleton({ rows = 3 }: Readonly<{ rows?: number }>) {
   return (
     <div className="space-y-3">
-      {Array.from({ length: rows }).map((_, i) => (
-        <TaskCardSkeleton key={i} />
+      {skeletonKeys(rows, "task-card").map((key) => (
+        <TaskCardSkeleton key={key} />
       ))}
     </div>
   );
 }
 
 /** Full tasks-page skeleton (header + task list). */
-export function TasksPageSkeleton({ rows = 3 }: { rows?: number }) {
+export function TasksPageSkeleton({ rows = 3 }: Readonly<{ rows?: number }>) {
   return (
     <div className="space-y-6">
       <PageHeaderSkeleton />
@@ -280,30 +290,30 @@ export function TasksPageSkeleton({ rows = 3 }: { rows?: number }) {
 
 /** ───────────────────────── PRDs ───────────────────────── */
 
-// Mirrors a PRD row: icon box + title/status, with a status pill on the right.
+// Mirrors a PRD row: title + status badge, version pill, updated-at line.
 function PrdRowSkeleton() {
   return (
     <div className="flex items-center justify-between gap-4 border border-border bg-card px-5 py-4">
-      <div className="flex min-w-0 items-center gap-4">
-        <Box className="size-10 shrink-0" />
-        <div className="space-y-2">
-          <Bar className="h-3.5 w-48" />
-          <Bar className="h-3 w-28" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex items-center gap-2">
+          <Bar className="h-4 w-48" />
+          <Bar className="h-4 w-14" />
         </div>
+        <Bar className="h-3 w-72" />
       </div>
-      <Bar className="h-6 w-24" />
+      <Bar className="h-8 w-24" />
     </div>
   );
 }
 
 /** Full PRDs-page skeleton (header + PRD rows). */
-export function PrdListSkeleton({ rows = 4 }: { rows?: number }) {
+export function PrdListSkeleton({ rows = 4 }: Readonly<{ rows?: number }>) {
   return (
     <div className="space-y-6">
       <PageHeaderSkeleton />
       <div className="grid gap-3">
-        {Array.from({ length: rows }).map((_, i) => (
-          <PrdRowSkeleton key={i} />
+        {skeletonKeys(rows, "prd-row").map((key) => (
+          <PrdRowSkeleton key={key} />
         ))}
       </div>
     </div>
@@ -328,13 +338,13 @@ function ReviewCardSkeleton() {
 }
 
 /** Full reviews-page skeleton (header + review rows). */
-export function ReviewsListSkeleton({ rows = 4 }: { rows?: number }) {
+export function ReviewsListSkeleton({ rows = 4 }: Readonly<{ rows?: number }>) {
   return (
     <div className="space-y-6">
       <PageHeaderSkeleton />
       <div className="grid gap-3">
-        {Array.from({ length: rows }).map((_, i) => (
-          <ReviewCardSkeleton key={i} />
+        {skeletonKeys(rows, "review-row").map((key) => (
+          <ReviewCardSkeleton key={key} />
         ))}
       </div>
     </div>
@@ -354,7 +364,7 @@ function GithubStatusCardSkeleton() {
           <Bar className="h-3 w-20" />
         </div>
       </div>
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-foreground/[0.03] p-4">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-foreground/3 p-4">
         <Box className="size-5 rounded-md" />
         <Bar className="h-3.5 w-24" />
       </div>
@@ -367,8 +377,8 @@ function GithubInfoCardSkeleton() {
   return (
     <div className="space-y-4 rounded-2xl border border-border bg-card p-8">
       <Bar className="h-4 w-40" />
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3">
+      {skeletonKeys(3, "github-info-step").map((key) => (
+        <div key={key} className="flex items-start gap-3">
           <Box className="size-8 shrink-0 rounded-lg" />
           <div className="flex-1 space-y-2">
             <Bar className="h-3.5 w-1/2" />
@@ -413,8 +423,8 @@ function PlanCardSkeleton() {
       <Bar className="mb-1 h-4 w-16" />
       <Bar className="mb-4 h-7 w-24" />
       <div className="mb-5 space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Bar key={i} className="h-3 w-3/4" />
+        {skeletonKeys(5, "plan-feature").map((key) => (
+          <Bar key={key} className="h-3 w-3/4" />
         ))}
       </div>
       <Bar className="mt-auto h-9 w-full" />
@@ -436,14 +446,14 @@ export function BillingPageSkeleton() {
           <Bar className="h-6 w-16 rounded-full" />
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <UsageBarSkeleton key={i} />
+          {skeletonKeys(5, "usage-bar").map((key) => (
+            <UsageBarSkeleton key={key} />
           ))}
         </div>
       </div>
       <div className="grid gap-5 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <PlanCardSkeleton key={i} />
+        {skeletonKeys(3, "plan-card").map((key) => (
+          <PlanCardSkeleton key={key} />
         ))}
       </div>
     </div>
@@ -452,12 +462,12 @@ export function BillingPageSkeleton() {
 
 /** ───────────────────────── Settings ───────────────────────── */
 
-function SettingsCardSkeleton({ lines = 2 }: { lines?: number }) {
+function SettingsCardSkeleton({ lines = 2 }: Readonly<{ lines?: number }>) {
   return (
     <div className="space-y-4 rounded-lg border border-border bg-card p-5">
       <Bar className="h-4 w-32" />
-      {Array.from({ length: lines }).map((_, i) => (
-        <Bar key={i} className="h-3.5 w-full" />
+      {skeletonKeys(lines, "settings-line").map((key) => (
+        <Bar key={key} className="h-3.5 w-full" />
       ))}
     </div>
   );
@@ -486,8 +496,8 @@ export function CopilotPageSkeleton() {
       <PageHeaderSkeleton />
       <div className="space-y-4 border border-border bg-card p-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="space-y-1.5">
+          {skeletonKeys(2, "copilot-field").map((key) => (
+            <div key={key} className="space-y-1.5">
               <Bar className="h-2.5 w-24" />
               <Bar className="h-9 w-full" />
             </div>
@@ -508,8 +518,8 @@ export function ContentSkeleton() {
     <div className="space-y-6">
       <PageHeaderSkeleton />
       <div className="space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <RowSkeleton key={i} />
+        {skeletonKeys(4, "content-row").map((key) => (
+          <RowSkeleton key={key} />
         ))}
       </div>
     </div>

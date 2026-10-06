@@ -73,7 +73,7 @@ const ACTIVE_KEY = "VelocityAI.agent.activerun.v1";
 const EMPTY: AgentChatState = { sessions: [], activeId: null, run: null };
 
 const uid = () =>
-  typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function"
+  globalThis.crypto !== undefined && typeof globalThis.crypto.randomUUID === "function"
     ? globalThis.crypto.randomUUID()
     : Date.now().toString(36);
 
@@ -115,7 +115,7 @@ function setState(next: AgentChatState, options?: { skipPersist?: boolean }) {
 }
 
 function getSnapshot(): AgentChatState {
-  if (state === null) state = load();
+  state ??= load();
   return state;
 }
 
@@ -395,7 +395,7 @@ async function readSegment(
         break;
       }
       if (!inError) {
-        await updateLivePlan(acc, sessionId, onProgress, false);
+        void updateLivePlan(acc, sessionId, onProgress, false);
       }
     }
     await updateLivePlan(acc, sessionId, onProgress, true);
@@ -487,6 +487,47 @@ async function fetchStreamResponse(
   }
 }
 
+type SegmentResult =
+  | { action: "break"; cancelled: boolean; errorText?: string }
+  | { action: "continue"; runId: string };
+
+async function executeRunSegment(
+  mode: "start" | "continue",
+  payload: AgentRunPayload,
+  runId: string | null,
+  sessionId: string,
+  acc: Accumulator,
+  mirror: (force?: boolean) => void,
+  signal: AbortSignal,
+): Promise<SegmentResult> {
+  const res = await fetchStreamResponse(mode, payload, runId, signal);
+  if (!res.ok) {
+    return { action: "break", cancelled: res.cancelled, errorText: res.error };
+  }
+
+  const headerRunId = res.response.headers.get(RUN_ID_HEADER);
+  const currentRunId = headerRunId ?? runId;
+  mirror(true);
+
+  const outcome = await readSegment(res.response, acc, sessionId, () => mirror(), signal);
+  mirror(true);
+
+  if (outcome === "cancelled") {
+    return { action: "break", cancelled: true };
+  }
+  if (outcome === "error" || outcome === "done") {
+    return { action: "break", cancelled: false };
+  }
+  if (!currentRunId) {
+    return {
+      action: "break",
+      cancelled: false,
+      errorText: acc.errorText ?? "The run was interrupted and can't be resumed.",
+    };
+  }
+  return { action: "continue", runId: currentRunId };
+}
+
 /**
  * Drive a run to completion across however many resumable segments it takes.
  * `opts.runId` + `opts.initialText` resume an existing run (reload recovery);
@@ -520,32 +561,13 @@ async function driveRun(
   await seedInitialState(sessionId, acc);
 
   while (!signal.aborted) {
-    const res = await fetchStreamResponse(mode, payload, runId, signal);
-    if (!res.ok) {
-      cancelled = res.cancelled;
-      if (res.error) acc.errorText = res.error;
+    const result = await executeRunSegment(mode, payload, runId, sessionId, acc, mirror, signal);
+    if (result.action === "break") {
+      cancelled = result.cancelled;
+      if (result.errorText) acc.errorText = result.errorText;
       break;
     }
-
-    const headerRunId = res.response.headers.get(RUN_ID_HEADER);
-    if (headerRunId) runId = headerRunId;
-    mirror(true);
-
-    const outcome = await readSegment(res.response, acc, sessionId, () => mirror(), signal);
-    mirror(true);
-
-    if (outcome === "cancelled") {
-      cancelled = true;
-      break;
-    }
-    if (outcome === "error" || outcome === "done") {
-      break;
-    }
-    // paused → continue the same run in another segment.
-    if (!runId) {
-      acc.errorText = acc.errorText ?? "The run was interrupted and can't be resumed.";
-      break;
-    }
+    runId = result.runId;
     mode = "continue";
   }
 

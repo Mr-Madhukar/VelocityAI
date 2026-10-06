@@ -36,7 +36,7 @@ export function useCommandPalette() {
 }
 
 /** ⌘K palette: live org-wide search + quick navigation. Mounted once in the shell. */
-export function CommandPalette({ children }: { children: React.ReactNode }) {
+export function CommandPalette({ children }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");

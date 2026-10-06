@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
  * the (already invalidated) session is signed out client-side and the user
  * lands back on the public home page.
  */
-export function DeleteAccountSection({ email }: { email: string | null }) {
+export function DeleteAccountSection({ email }: Readonly<{ email: string | null }>) {
   const [open, setOpen] = useState(false);
   const [confirmation, setConfirmation] = useState("");
 
@@ -42,7 +42,7 @@ export function DeleteAccountSection({ email }: { email: string | null }) {
     !!email && confirmation.trim().toLowerCase() === email.toLowerCase();
 
   return (
-    <div className="rounded-lg border border-red-500/25 bg-red-500/[0.04] p-5">
+    <div className="rounded-lg border border-red-500/25 bg-red-500/4 p-5">
       <div className="flex items-center gap-2">
         <TriangleAlert className="size-4 text-red-500" />
         <h2 className="text-sm font-semibold text-foreground">Danger zone</h2>

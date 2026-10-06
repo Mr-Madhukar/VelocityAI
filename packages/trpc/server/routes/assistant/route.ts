@@ -64,36 +64,32 @@ async function buildAssistantContext(ctx: Context, orgId: string): Promise<strin
   const lines: string[] = [];
   lines.push(`Organization: ${org?.name ?? "Unknown"} (plan: ${sub?.plan ?? "free"})`);
 
-  lines.push(
-    `Projects (${projectRows.length}): ${
-      projectRows.length > 0
-        ? projectRows
-            .map((p) => (p.techStack ? `${p.name} [${p.techStack}]` : p.name))
-            .join(", ")
-        : "none yet"
-    }`,
-  );
+  const projectsSummary =
+    projectRows.length > 0
+      ? projectRows
+          .map((p) => (p.techStack ? `${p.name} [${p.techStack}]` : p.name))
+          .join(", ")
+      : "none yet";
+  lines.push(`Projects (${projectRows.length}): ${projectsSummary}`);
 
-  lines.push(
-    `Repositories connected: ${
-      repoRows.length > 0 ? repoRows.map((r) => r.fullName).join(", ") : "none connected"
-    }`,
-  );
+  const reposSummary =
+    repoRows.length > 0 ? repoRows.map((r) => r.fullName).join(", ") : "none connected";
+  lines.push(`Repositories connected: ${reposSummary}`);
 
   if (taskCounts.length > 0) {
-    lines.push(
-      `Tasks by status: ${taskCounts.map((t) => `${t.status}=${t.value}`).join(", ")}`,
-    );
+    const formattedTaskCounts = taskCounts
+      .map((t) => `${t.status}=${t.value}`)
+      .join(", ");
+    lines.push(`Tasks by status: ${formattedTaskCounts}`);
   }
 
   if (featureRows.length > 0) {
     lines.push(`\nFeatures (most recent ${featureRows.length}):`);
     for (const f of featureRows) {
       const proj = projectName.get(f.projectId);
+      const projSuffix = proj ? ` [${proj}]` : "";
       lines.push(
-        `- ${f.title} — status: ${f.status}, priority: ${f.priority}${
-          proj ? ` [${proj}]` : ""
-        }`,
+        `- ${f.title} — status: ${f.status}, priority: ${f.priority}${projSuffix}`,
       );
     }
   } else {

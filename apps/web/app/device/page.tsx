@@ -10,9 +10,9 @@ import { DeviceApproval } from "./device-approval";
 // confirms the code to grant the terminal a session.
 export default async function DevicePage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: Promise<{ user_code?: string }>;
-}) {
+}>) {
   const { user_code: userCode } = await searchParams;
   const session = await getServerSession();
 

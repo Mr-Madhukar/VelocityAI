@@ -70,7 +70,8 @@ export function registerAuthCommands(program: Command, getRuntime: () => Runtime
       if (rt.json) {
         printJson({ ok: true, email, activeOrg });
       } else {
-        success(`Signed in${email ? ` as ${email}` : ""}.`);
+        const signedInSuffix = email ? ` as ${email}` : "";
+        success(`Signed in${signedInSuffix}.`);
         if (activeOrg) {
           info(`  Active organization: ${activeOrg}`);
         } else {
@@ -104,8 +105,9 @@ export function registerAuthCommands(program: Command, getRuntime: () => Runtime
       if (rt.json) {
         printJson({ user: session.user, org: current });
       } else {
+        const orgInfo = current ? `${current.name} (${current.slug})` : "— none selected";
         info(`User: ${session.user.email ?? session.user.name ?? "unknown"}`);
-        info(`Org:  ${current ? `${current.name} (${current.slug})` : "— none selected"}`);
+        info(`Org:  ${orgInfo}`);
         info(`API:  ${rt.apiUrl}`);
       }
     });

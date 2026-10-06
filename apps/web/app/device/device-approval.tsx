@@ -21,10 +21,10 @@ type Phase = "idle" | "working" | "approved" | "denied" | "error";
 export function DeviceApproval({
   initialUserCode,
   userEmail,
-}: {
+}: Readonly<{
   initialUserCode: string;
   userEmail: string | null;
-}) {
+}>) {
   const [code, setCode] = useState(initialUserCode.toUpperCase());
   const [phase, setPhase] = useState<Phase>("idle");
   const [message, setMessage] = useState<string | null>(null);
