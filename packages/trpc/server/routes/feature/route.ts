@@ -44,7 +44,7 @@ async function transitionFeatureStatus(
     toStatus: typeof featureRequests.$inferSelect.status;
   },
 ) {
-  return db
+  return await db
     .update(featureRequests)
     .set({ status: opts.toStatus, updatedAt: new Date() })
     .where(

@@ -10,7 +10,12 @@ import {
 } from "@repo/database/schema";
 
 import { getPlanDetails, type BillingPlan } from "@repo/services/shipflow/billing";
-import { detachFeaturePrsAndCycles } from "@repo/database/branch";
+import {
+  detachFeaturePrsAndCycles,
+  getOrgFeature,
+  linkPullRequestToFeatureInTx,
+  syncFeatureReviewVerdictInTx,
+} from "@repo/database/branch";
 
 import { orgProcedure, protectedProcedure, router } from "../../trpc";
 import { z } from "../../schema";
@@ -218,15 +223,7 @@ export const githubRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Pull request not found" });
       }
 
-      const [feature] = await ctx.db
-        .select({ id: featureRequests.id })
-        .from(featureRequests)
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-          ),
-        );
+      const feature = await getOrgFeature(ctx.db, input.featureId, ctx.org.id);
       if (!feature) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Feature not found" });
       }
@@ -246,15 +243,12 @@ export const githubRouter = router({
           .set({ featureId: null })
           .where(eq(reviewCycles.pullRequestId, input.pullRequestId));
 
-        await tx
-          .update(pullRequests)
-          .set({
-            featureId: input.featureId,
-            linkedHeadSha: row.headSha,
-            linkedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(pullRequests.id, input.pullRequestId));
+        await linkPullRequestToFeatureInTx(tx, {
+          pullRequestId: input.pullRequestId,
+          featureId: input.featureId,
+          headSha: row.headSha,
+          now,
+        });
 
         // A closed/merged PR never gets the forced link-time review, so carry
         // its newest completed cycle and reflect that verdict on the feature.
@@ -276,13 +270,8 @@ export const githubRouter = router({
               .update(reviewCycles)
               .set({ featureId: input.featureId })
               .where(eq(reviewCycles.id, latest.id));
-            await tx
-              .update(featureRequests)
-              .set({
-                status: latest.status === "passed" ? "approved" : "blocked",
-                updatedAt: now,
-              })
-              .where(eq(featureRequests.id, input.featureId));
+
+            await syncFeatureReviewVerdictInTx(tx, input.featureId, latest.status, now);
           }
         }
       });

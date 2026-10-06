@@ -12,6 +12,7 @@
     "db:push": "dotenv -- turbo db:push",
     "test": "turbo run test",
     "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps",
     "test:e2e:smoke": "playwright test --grep @smoke",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

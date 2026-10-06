@@ -196,3 +196,70 @@ export async function detachFeaturePrsAndCycles(
       ),
     );
 }
+
+/**
+ * Looks up a feature by ID scoped to the active organization.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getOrgFeature(
+  db: any,
+  featureId: string,
+  organizationId: string,
+): Promise<{ id: string } | null> {
+  const [feature] = await db
+    .select({ id: featureRequests.id })
+    .from(featureRequests)
+    .where(
+      and(
+        eq(featureRequests.id, featureId),
+        eq(featureRequests.organizationId, organizationId),
+      ),
+    );
+  return feature ?? null;
+}
+
+/**
+ * Links a pull request to a feature with head SHA stamp.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function linkPullRequestToFeatureInTx(
+  tx: any,
+  opts: {
+    pullRequestId: string;
+    featureId: string;
+    headSha: string | null;
+    now?: Date;
+  },
+): Promise<void> {
+  const now = opts.now ?? new Date();
+  await tx
+    .update(pullRequests)
+    .set({
+      featureId: opts.featureId,
+      linkedHeadSha: opts.headSha,
+      linkedAt: now,
+      updatedAt: now,
+    })
+    .where(eq(pullRequests.id, opts.pullRequestId));
+}
+
+/**
+ * Reflects a completed review cycle verdict ('passed' -> 'approved', 'failed' -> 'blocked') onto the feature.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function syncFeatureReviewVerdictInTx(
+  tx: any,
+  featureId: string,
+  status: string,
+  now: Date = new Date(),
+): Promise<void> {
+  if (status === "passed" || status === "failed") {
+    await tx
+      .update(featureRequests)
+      .set({
+        status: status === "passed" ? "approved" : "blocked",
+        updatedAt: now,
+      })
+      .where(eq(featureRequests.id, featureId));
+  }
+}

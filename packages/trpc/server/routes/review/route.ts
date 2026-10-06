@@ -7,7 +7,12 @@ import {
   reviewCycles,
   reviewIssues,
 } from "@repo/database/schema";
-import { detachFeaturePrsAndCycles } from "@repo/database/branch";
+import {
+  detachFeaturePrsAndCycles,
+  getOrgFeature,
+  linkPullRequestToFeatureInTx,
+  syncFeatureReviewVerdictInTx,
+} from "@repo/database/branch";
 
 import type { Context } from "../../context";
 import { orgProcedure, router } from "../../trpc";
@@ -173,16 +178,7 @@ export const reviewRouter = router({
       }
 
       // The target feature must belong to this org.
-      const [feature] = await ctx.db
-        .select({ id: featureRequests.id })
-        .from(featureRequests)
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-          ),
-        );
-
+      const feature = await getOrgFeature(ctx.db, input.featureId, ctx.org.id);
       if (!feature) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Feature not found" });
       }
@@ -198,26 +194,16 @@ export const reviewRouter = router({
           .update(reviewCycles)
           .set({ featureId: input.featureId })
           .where(eq(reviewCycles.id, input.cycleId));
-        await tx
-          .update(pullRequests)
-          .set({
-            featureId: input.featureId,
-            linkedHeadSha: row.prHeadSha,
-            linkedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(pullRequests.id, row.pullRequestId));
+
+        await linkPullRequestToFeatureInTx(tx, {
+          pullRequestId: row.pullRequestId,
+          featureId: input.featureId,
+          headSha: row.prHeadSha,
+          now,
+        });
 
         // Reflect a completed verdict on the feature.
-        if (row.status === "passed" || row.status === "failed") {
-          await tx
-            .update(featureRequests)
-            .set({
-              status: row.status === "passed" ? "approved" : "blocked",
-              updatedAt: now,
-            })
-            .where(eq(featureRequests.id, input.featureId));
-        }
+        await syncFeatureReviewVerdictInTx(tx, input.featureId, row.status, now);
       });
 
       return { linked: true };
