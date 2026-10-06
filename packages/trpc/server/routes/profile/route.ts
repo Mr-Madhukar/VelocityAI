@@ -304,7 +304,7 @@ export const profileRouter = router({
         .from(usersTable)
         .where(eq(usersTable.id, ctx.session.user.id));
 
-      if (!stored.code || !user || stored.email !== user.email) {
+      if (!stored.code || !stored.email || stored.email !== user?.email) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This code is no longer valid. Request a new one and try again.",

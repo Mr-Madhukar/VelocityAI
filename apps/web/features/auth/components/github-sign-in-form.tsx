@@ -26,7 +26,7 @@ function SubmitButton() {
   );
 }
 
-export function GithubSignInForm({ callbackUrl }: { callbackUrl?: string }) {
+export function GithubSignInForm({ callbackUrl }: Readonly<{ callbackUrl?: string }>) {
   return (
     <form action={signInWithGithub} className="w-full">
       {callbackUrl ? (

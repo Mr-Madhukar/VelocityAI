@@ -194,7 +194,7 @@ export const prdRouter = router({
           prdId: z.string(),
           featureId: z.string(),
           recipientUserIds: z.array(z.string()).max(25).default([]),
-          externalEmails: z.array(z.string().trim().toLowerCase().email()).max(10).default([]),
+          externalEmails: z.array(z.email().trim().toLowerCase()).max(10).default([]),
           message: z.string().max(1000).optional(),
         })
         .refine((v) => v.recipientUserIds.length + v.externalEmails.length > 0, {
@@ -300,7 +300,7 @@ export const prdRouter = router({
       // Send to each recipient (skip those without a real email address).
       const results = await Promise.allSettled(
         recipients
-          .filter((r) => r.email && r.email.includes("@"))
+          .filter((r) => r.email?.includes("@"))
           .map((r) =>
             ctx.sendPrdShare({
               to: r.email,

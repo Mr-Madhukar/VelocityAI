@@ -24,9 +24,15 @@ export function dim(message: string): void {
   console.log(pc.dim(message.replace(/[\r\n]/g, "")));
 }
 
+function formatErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return JSON.stringify(err);
+}
+
 /** Print an error (respecting --json) and exit non-zero. */
 export function fail(err: unknown, json: boolean): never {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = formatErrorMessage(err);
   if (json) {
     printJson({ ok: false, error: message });
   } else {

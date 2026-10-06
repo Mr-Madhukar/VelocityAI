@@ -57,7 +57,7 @@ export function registerReviewCommands(program: Command, getRuntime: () => Runti
       info(`${cycle.featureTitle ?? "Unlinked review"}  ${colorStatus(cycle.status)}`);
       info(`  id:     ${cycle.id}`);
       info(`  verdict: ${cycle.overallVerdict ?? "—"}`);
-      info(`  score:   ${cycle.prdComplianceScore != null ? cycle.prdComplianceScore : "—"}`);
+      info(`  score:   ${cycle.prdComplianceScore ?? "—"}`);
       if (cycle.prUrl) info(`  PR:      ${cycle.prUrl}`);
       if (cycle.summary) info(`\n${cycle.summary}`);
 

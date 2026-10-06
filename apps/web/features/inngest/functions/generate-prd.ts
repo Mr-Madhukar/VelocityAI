@@ -74,7 +74,7 @@ export const generatePrdFunction = inngest.createFunction(
         .from(featureRequests)
         .where(eq(featureRequests.id, featureId));
 
-      if (!current || current.status !== "prd_generating") {
+      if (current?.status !== "prd_generating") {
         return { skipped: true };
       }
 

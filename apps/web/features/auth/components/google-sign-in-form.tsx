@@ -41,7 +41,7 @@ function SubmitButton() {
   );
 }
 
-export function GoogleSignInForm({ callbackUrl }: { callbackUrl?: string }) {
+export function GoogleSignInForm({ callbackUrl }: Readonly<{ callbackUrl?: string }>) {
   return (
     <form action={signInWithGoogle} className="w-full">
       {callbackUrl ? (

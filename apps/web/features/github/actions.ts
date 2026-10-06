@@ -488,9 +488,7 @@ export async function syncRepoPullRequests(
       installationId,
     };
 
-    for (const pr of data) {
-      await syncSinglePullRequest(pr, prCtx);
-    }
+    await Promise.all(data.map((pr) => syncSinglePullRequest(pr, prCtx)));
 
     return { synced: data.length };
   } catch (error) {

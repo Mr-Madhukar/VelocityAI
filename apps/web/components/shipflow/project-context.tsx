@@ -41,7 +41,7 @@ const STORAGE_PREFIX = "shipflow.activeProject";
 // Sentinel persisted when the user explicitly chooses the org-wide ("All projects") scope.
 const ALL_SCOPE = "__all__";
 
-export function ProjectProvider({ children }: { children: React.ReactNode }) {
+export function ProjectProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const { data: org } = trpc.org.current.useQuery();
   const { data: projects = [], isLoading } = trpc.project.list.useQuery();
 
@@ -50,7 +50,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
   // Scope: `null` = "All projects" (org-wide). `ready` distinguishes "not yet
   // hydrated" (null + !ready) from an explicit org-wide scope (null + ready).
-  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   const storageKey = org?.id ? `${STORAGE_PREFIX}.${org.id}` : null;
@@ -60,7 +60,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!storageKey) return;
     const stored = window.localStorage.getItem(storageKey);
-    setActiveProjectIdState(stored && stored !== ALL_SCOPE ? stored : null);
+    setActiveProjectId(stored && stored !== ALL_SCOPE ? stored : null);
     setReady(true);
   }, [storageKey]);
 
@@ -69,13 +69,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready || isLoading) return;
     if (activeProjectId && !projects.some((p) => p.id === activeProjectId)) {
-      setActiveProjectIdState(null);
+      setActiveProjectId(null);
       if (storageKey) window.localStorage.setItem(storageKey, ALL_SCOPE);
     }
   }, [ready, isLoading, projects, activeProjectId, storageKey]);
 
-  function setActiveProjectId(id: string | null) {
-    setActiveProjectIdState(id);
+  function selectActiveProjectId(id: string | null) {
+    setActiveProjectId(id);
     if (storageKey) {
       window.localStorage.setItem(storageKey, id ?? ALL_SCOPE);
     }
@@ -84,7 +84,15 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<ProjectContextValue>(() => {
     const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
     const scopeLabel = activeProject?.name ?? "All projects";
-    return { projects, activeProjectId, activeProject, setActiveProjectId, scopeLabel, isLoading, ready };
+    return {
+      projects,
+      activeProjectId,
+      activeProject,
+      setActiveProjectId: selectActiveProjectId,
+      scopeLabel,
+      isLoading,
+      ready,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, activeProjectId, isLoading, ready]);
 
@@ -105,10 +113,10 @@ export function useActiveProject() {
 export function ProjectTag({
   projectId,
   className,
-}: {
+}: Readonly<{
   projectId: string | null;
   className?: string;
-}) {
+}>) {
   const { projects, activeProjectId } = useActiveProject();
   if (activeProjectId !== null) return null;
 
@@ -118,7 +126,7 @@ export function ProjectTag({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1 border border-border bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground",
+        "inline-flex max-w-full items-center gap-1 border border-border bg-foreground/4 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground",
         className,
       )}
     >
@@ -136,7 +144,7 @@ export function ProjectSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="group flex items-center gap-2.5 border border-border bg-foreground/[0.03] px-3 py-1.5 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/[0.06] focus:outline-none">
+      <DropdownMenuTrigger className="group flex items-center gap-2.5 border border-border bg-foreground/3 px-3 py-1.5 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/6 focus:outline-none">
         <div className="grid size-7 shrink-0 place-items-center bg-primary/10 text-primary">
           {isAll ? <Layers className="size-4" /> : <FolderGit2 className="size-4" />}
         </div>

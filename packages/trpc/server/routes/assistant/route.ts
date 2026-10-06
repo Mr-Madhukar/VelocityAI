@@ -87,7 +87,7 @@ async function buildAssistantContext(ctx: Context, orgId: string): Promise<strin
     lines.push(`\nFeatures (most recent ${featureRows.length}):`);
     for (const f of featureRows) {
       const proj = projectName.get(f.projectId);
-      const projSuffix = proj ? ` [${proj}]` : "";
+      const projSuffix = typeof proj === "string" ? ` [${proj}]` : "";
       lines.push(
         `- ${f.title} — status: ${f.status}, priority: ${f.priority}${projSuffix}`,
       );

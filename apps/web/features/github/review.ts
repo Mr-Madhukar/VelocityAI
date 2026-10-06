@@ -83,12 +83,18 @@ async function fetchPrFilesAndCommits(
   return { files, commits };
 }
 
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return JSON.stringify(error);
+}
+
 async function handleReviewFailure(
   reviewCycleId: string | undefined,
   featureId: string | null,
   error: unknown,
 ) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = formatErrorMessage(error);
   if (reviewCycleId) {
     await db
       .update(reviewCycles)

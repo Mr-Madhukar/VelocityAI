@@ -171,11 +171,11 @@ export const memberRouter = router({
   // Directly add a user by email — admin+ only.
   // If the email has no account yet, a stub user is created so they can be assigned tasks
   // immediately. They claim the account when they first sign in (Google/GitHub/email).
-  // TODO: Replace stub creation with email-based invitation + acceptance link in production.
+  // Note: Stub creation may be replaced with email-based invitation + acceptance link in future iterations.
   directAdd: adminProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         role: z.enum(MEMBER_ROLES).default("developer"),
       }),
     )
@@ -240,7 +240,7 @@ export const memberRouter = router({
   invite: adminProcedure
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.email(),
         role: z.enum(MEMBER_ROLES).default("developer"),
       }),
     )

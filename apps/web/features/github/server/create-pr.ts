@@ -13,8 +13,14 @@ export type PrFile = { path: string; content: string };
  * (or this installation) lacks the permission for the endpoint — for the git
  * data + pulls APIs used here that means Contents / Pull requests write.
  */
+function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return JSON.stringify(error);
+}
+
 function friendlyGithubError(error: unknown): Error {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = formatErrorMessage(error);
   if (/resource not accessible by integration/i.test(message)) {
     return new Error(
       "GitHub blocked the write (“Resource not accessible by integration”). " +

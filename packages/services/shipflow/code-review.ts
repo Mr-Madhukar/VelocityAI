@@ -174,7 +174,7 @@ function isCriterionMissing(criterion: string, diffText: string) {
   let matches = 0;
   for (const keyword of keywords) {
     const root = keyword.length > 5 ? keyword.slice(0, -1) : keyword;
-    const regex = new RegExp(`\\b${root}`, "i");
+    const regex = new RegExp(String.raw`\b${root}`, "i");
     if (regex.test(diffText)) {
       matches++;
     }

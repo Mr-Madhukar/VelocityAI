@@ -39,26 +39,30 @@ export async function getFeatureBranchFiles(input: {
       .filter((f) => f.status !== "removed")
       .slice(0, MAX_BRANCH_FILES);
 
-    const files: Array<{ path: string; content: string }> = [];
-    for (const file of changed) {
-      try {
-        const { data } = await octokit.rest.repos.getContent({
-          owner,
-          repo: name,
-          path: file.filename,
-          ref: input.branchName,
-        });
-        if (!Array.isArray(data) && data.type === "file" && data.content) {
-          const content = Buffer.from(data.content, "base64")
-            .toString("utf8")
-            .slice(0, MAX_FILE_CHARS);
-          files.push({ path: file.filename, content });
+    const fetchedFiles = await Promise.all(
+      changed.map(async (file) => {
+        try {
+          const { data } = await octokit.rest.repos.getContent({
+            owner,
+            repo: name,
+            path: file.filename,
+            ref: input.branchName,
+          });
+          if (!Array.isArray(data) && data.type === "file" && data.content) {
+            const content = Buffer.from(data.content, "base64")
+              .toString("utf8")
+              .slice(0, MAX_FILE_CHARS);
+            return { path: file.filename, content };
+          }
+        } catch {
+          // Skip files we can't read (renames, submodules, binaries).
         }
-      } catch {
-        // Skip files we can't read (renames, submodules, binaries).
-      }
-    }
-    return files;
+        return null;
+      }),
+    );
+    return fetchedFiles.filter(
+      (file): file is { path: string; content: string } => file !== null,
+    );
   } catch {
     return [];
   }

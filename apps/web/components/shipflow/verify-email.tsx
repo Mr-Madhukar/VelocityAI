@@ -25,10 +25,10 @@ const RESEND_COOLDOWN_SECONDS = 30;
 export function EmailVerifiedBadge({
   verified,
   className,
-}: {
+}: Readonly<{
   verified: boolean;
   className?: string;
-}) {
+}>) {
   return (
     <span
       className={cn(
@@ -50,11 +50,11 @@ export function VerifyEmailDialog({
   open,
   onOpenChange,
   onVerified,
-}: {
+}: Readonly<{
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onVerified?: () => void;
-}) {
+}>) {
   const utils = trpc.useUtils();
   const { data: status } = trpc.profile.emailStatus.useQuery(undefined, { enabled: open });
 
@@ -157,7 +157,7 @@ export function VerifyEmailDialog({
                 <InputOTPSlot
                   key={i}
                   index={i}
-                  className="size-11 rounded-md border border-foreground/15 bg-foreground/[0.03] text-base font-semibold first:rounded-l-md last:rounded-r-md"
+                  className="size-11 rounded-md border border-foreground/15 bg-foreground/3 text-base font-semibold first:rounded-l-md last:rounded-r-md"
                 />
               ))}
             </InputOTPGroup>
@@ -212,7 +212,7 @@ export function EmailVerificationPrompt() {
     raisedRef.current = true;
     toast.custom(
       (t) => (
-        <div className="pointer-events-auto flex w-[360px] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-xl border border-amber-400/25 bg-popover p-4 shadow-lg shadow-black/20">
+        <div className="pointer-events-auto flex w-90 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-xl border border-amber-400/25 bg-popover p-4 shadow-lg shadow-black/20">
           <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-amber-400/25 bg-amber-400/10">
             <MailWarning className="size-4 text-amber-500 dark:text-amber-300" />
           </div>
@@ -255,7 +255,7 @@ export function EmailVerificationPrompt() {
               sessionStorage.setItem(DISMISS_KEY, "1");
               toast.dismiss(t);
             }}
-            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-foreground/6 hover:text-foreground"
           >
             <X className="size-3.5" />
           </button>
