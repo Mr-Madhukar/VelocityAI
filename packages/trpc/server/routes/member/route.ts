@@ -87,7 +87,7 @@ export const memberRouter = router({
   // Get tasks assigned to a member within this org — used before removal to prompt reassignment
   getAssignedTasks: adminProcedure
     .input(z.object({ userId: z.string() }))
-    .query(async ({ ctx, input }) => {
+    .query(({ ctx, input }) => {
       return ctx.db
         .select({
           id: tasks.id,
@@ -359,7 +359,7 @@ export const memberRouter = router({
     }),
 
   // List pending invitations for the active org
-  listInvitations: orgProcedure.query(async ({ ctx }) => {
+  listInvitations: orgProcedure.query(({ ctx }) => {
     return ctx.db
       .select()
       .from(invitations)

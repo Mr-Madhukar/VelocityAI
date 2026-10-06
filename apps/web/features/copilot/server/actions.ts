@@ -61,6 +61,69 @@ export async function refreshRepoContextAction(repositoryId: string) {
   }
 }
 
+async function loadFeaturePrd(
+  featureId: string,
+): Promise<{ problem: string; acceptanceCriteria: string[] } | null> {
+  const [prdRow] = await db
+    .select()
+    .from(prds)
+    .where(eq(prds.featureId, featureId));
+  if (!prdRow) return null;
+  try {
+    return {
+      problem: prdRow.problem,
+      acceptanceCriteria: JSON.parse(prdRow.acceptanceCriteria) as string[],
+    };
+  } catch {
+    return { problem: prdRow.problem, acceptanceCriteria: [] };
+  }
+}
+
+async function loadLatestReviewFindings(featureId: string): Promise<string[] | null> {
+  const [latestCycle] = await db
+    .select({ id: reviewCycles.id })
+    .from(reviewCycles)
+    .where(eq(reviewCycles.featureId, featureId))
+    .orderBy(desc(reviewCycles.createdAt))
+    .limit(1);
+  if (!latestCycle) return null;
+
+  const issues = await db
+    .select({ title: reviewIssues.title, suggestion: reviewIssues.suggestion })
+    .from(reviewIssues)
+    .where(
+      and(
+        eq(reviewIssues.reviewCycleId, latestCycle.id),
+        eq(reviewIssues.resolved, false),
+      ),
+    );
+  return issues.map((i) => (i.suggestion ? `${i.title} — ${i.suggestion}` : i.title));
+}
+
+async function loadFeatureContext(
+  featureId: string,
+  organizationId: string,
+  mode: CopilotMode,
+): Promise<{
+  prd: { problem: string; acceptanceCriteria: string[] } | null;
+  reviewFindings: string[] | null;
+}> {
+  const [feature] = await db
+    .select({ id: featureRequests.id })
+    .from(featureRequests)
+    .where(
+      and(
+        eq(featureRequests.id, featureId),
+        eq(featureRequests.organizationId, organizationId),
+      ),
+    );
+  if (!feature) return { prd: null, reviewFindings: null };
+
+  const prd = await loadFeaturePrd(featureId);
+  const reviewFindings = mode === "fix" ? await loadLatestReviewFindings(featureId) : null;
+  return { prd, reviewFindings };
+}
+
 export async function generateImplementationAction(input: {
   repositoryId: string;
   prompt: string;
@@ -74,57 +137,9 @@ export async function generateImplementationAction(input: {
     return { ok: false, error: "Describe what you want to build or fix." };
   }
 
-  // Pull PRD + outstanding review findings when the request is tied to a feature
-  // — this is what lets it "build from the PRD" or "fix the review issues".
-  let prd: { problem: string; acceptanceCriteria: string[] } | null = null;
-  let reviewFindings: string[] | null = null;
-
-  if (input.featureId) {
-    const [feature] = await db
-      .select({ id: featureRequests.id })
-      .from(featureRequests)
-      .where(
-        and(
-          eq(featureRequests.id, input.featureId),
-          eq(featureRequests.organizationId, auth.organizationId),
-        ),
-      );
-    if (feature) {
-      const [prdRow] = await db
-        .select()
-        .from(prds)
-        .where(eq(prds.featureId, input.featureId));
-      if (prdRow) {
-        prd = {
-          problem: prdRow.problem,
-          acceptanceCriteria: JSON.parse(prdRow.acceptanceCriteria) as string[],
-        };
-      }
-
-      if (input.mode === "fix") {
-        const [latestCycle] = await db
-          .select({ id: reviewCycles.id })
-          .from(reviewCycles)
-          .where(eq(reviewCycles.featureId, input.featureId))
-          .orderBy(desc(reviewCycles.createdAt))
-          .limit(1);
-        if (latestCycle) {
-          const issues = await db
-            .select({ title: reviewIssues.title, suggestion: reviewIssues.suggestion })
-            .from(reviewIssues)
-            .where(
-              and(
-                eq(reviewIssues.reviewCycleId, latestCycle.id),
-                eq(reviewIssues.resolved, false),
-              ),
-            );
-          reviewFindings = issues.map((i) =>
-            i.suggestion ? `${i.title} — ${i.suggestion}` : i.title,
-          );
-        }
-      }
-    }
-  }
+  const { prd, reviewFindings } = input.featureId
+    ? await loadFeatureContext(input.featureId, auth.organizationId, input.mode)
+    : { prd: null, reviewFindings: null };
 
   try {
     const plan = await generateImplementation({

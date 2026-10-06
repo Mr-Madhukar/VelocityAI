@@ -39,7 +39,7 @@ export const reviewRouter = router({
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
+    .query(({ ctx, input }) => {
       const conditions = [eq(repositories.organizationId, ctx.org.id)];
       if (input?.projectId) {
         // A project filter only matches feature-linked cycles (unlinked have no project).

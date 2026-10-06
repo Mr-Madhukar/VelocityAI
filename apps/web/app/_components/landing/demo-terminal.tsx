@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
  */
 
 type ScriptLine = {
+  id: string;
   kind: "cmd" | "out" | "ok" | "wait" | "blank";
   text: string;
   /** pause after the line is fully shown (ms) */
@@ -17,33 +18,33 @@ type ScriptLine = {
 };
 
 const SCRIPT: ScriptLine[] = [
-  { kind: "cmd", text: "npm install -g VelocityAI" },
-  { kind: "out", text: "added 6 packages in 2s" },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: "VelocityAI login" },
-  { kind: "wait", text: "opening browser to approve…", hold: 700 },
-  { kind: "ok", text: "signed in as you@team.com" },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: 'VelocityAI feature create "Dark mode toggle" --priority urgent' },
-  { kind: "ok", text: "feature 0b75cf3a created — clarifying questions ready" },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: "VelocityAI prd generate 0b75cf3a" },
-  { kind: "wait", text: "drafting spec from clarified requirements…", hold: 900 },
-  { kind: "ok", text: "PRD ready — 3 acceptance criteria" },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: "VelocityAI prd approve 0b75cf3a" },
-  { kind: "ok", text: "approved — task breakdown triggered" },
-  { kind: "blank", text: "" },
-  { kind: "cmd", text: "VelocityAI review watch" },
-  { kind: "out", text: "PR #128 opened → reviewing against PRD…", hold: 900 },
-  { kind: "ok", text: "review passed — 3/3 criteria met" },
-  { kind: "ok", text: "feature shipped 🚀", hold: 3400 },
+  { id: "step-1", kind: "cmd", text: "npm install -g VelocityAI" },
+  { id: "step-2", kind: "out", text: "added 6 packages in 2s" },
+  { id: "step-3", kind: "blank", text: "" },
+  { id: "step-4", kind: "cmd", text: "VelocityAI login" },
+  { id: "step-5", kind: "wait", text: "opening browser to approve…", hold: 700 },
+  { id: "step-6", kind: "ok", text: "signed in as you@team.com" },
+  { id: "step-7", kind: "blank", text: "" },
+  { id: "step-8", kind: "cmd", text: 'VelocityAI feature create "Dark mode toggle" --priority urgent' },
+  { id: "step-9", kind: "ok", text: "feature 0b75cf3a created — clarifying questions ready" },
+  { id: "step-10", kind: "blank", text: "" },
+  { id: "step-11", kind: "cmd", text: "VelocityAI prd generate 0b75cf3a" },
+  { id: "step-12", kind: "wait", text: "drafting spec from clarified requirements…", hold: 900 },
+  { id: "step-13", kind: "ok", text: "PRD ready — 3 acceptance criteria" },
+  { id: "step-14", kind: "blank", text: "" },
+  { id: "step-15", kind: "cmd", text: "VelocityAI prd approve 0b75cf3a" },
+  { id: "step-16", kind: "ok", text: "approved — task breakdown triggered" },
+  { id: "step-17", kind: "blank", text: "" },
+  { id: "step-18", kind: "cmd", text: "VelocityAI review watch" },
+  { id: "step-19", kind: "out", text: "PR #128 opened → reviewing against PRD…", hold: 900 },
+  { id: "step-20", kind: "ok", text: "review passed — 3/3 criteria met" },
+  { id: "step-21", kind: "ok", text: "feature shipped 🚀", hold: 3400 },
 ];
 
 const TYPE_MS = 26;
 const LINE_GAP_MS = 340;
 
-function LineView({ line, chars }: { line: ScriptLine; chars: number }) {
+function LineView({ line, chars }: Readonly<{ line: ScriptLine; chars: number }>) {
   if (line.kind === "blank") return <div className="h-3" />;
   if (line.kind === "cmd") {
     return (
@@ -71,7 +72,7 @@ function LineView({ line, chars }: { line: ScriptLine; chars: number }) {
   );
 }
 
-export function DemoTerminal({ running }: { running: boolean }) {
+export function DemoTerminal({ running }: Readonly<{ running: boolean }>) {
   // number of fully revealed lines + typing progress within the current one
   const [pos, setPos] = useState<{ line: number; chars: number }>({ line: 0, chars: 0 });
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -108,7 +109,7 @@ export function DemoTerminal({ running }: { running: boolean }) {
       className="h-140 overflow-y-auto p-5 text-left font-mono text-[12px] leading-relaxed sm:h-155 sm:text-[12.5px]"
     >
       {SCRIPT.slice(0, pos.line + 1).map((line, i) => (
-        <LineView key={i} line={line} chars={i < pos.line ? line.text.length : pos.chars} />
+        <LineView key={line.id} line={line} chars={i < pos.line ? line.text.length : pos.chars} />
       ))}
     </div>
   );

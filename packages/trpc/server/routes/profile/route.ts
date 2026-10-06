@@ -13,6 +13,7 @@ import {
 } from "@repo/database/schema";
 import { TRPCError } from "@trpc/server";
 
+import type { ContextValue } from "../../context";
 import { protectedProcedure, router } from "../../trpc";
 import { z } from "../../schema";
 import { enforceRateLimit } from "../../rate-limit";
@@ -21,6 +22,189 @@ const VERIFY_CODE_TTL_MINUTES = 10;
 
 function verificationIdentifier(userId: string) {
   return `email-verify:${userId}`;
+}
+
+type DeletionPlan = {
+  soloOrgIds: string[];
+  reassignTargets: Map<string, string>;
+};
+
+const ROLE_PRIORITY: Record<string, number> = {
+  owner: 0,
+  admin: 1,
+  manager: 2,
+  developer: 3,
+};
+
+type MembershipRow = {
+  orgId: string;
+  orgName: string;
+  role: string;
+};
+
+type MemberRow = {
+  organizationId: string;
+  userId: string;
+  role: string;
+};
+
+function groupMembersByOrg(memberList: MemberRow[]): Map<string, MemberRow[]> {
+  const map = new Map<string, MemberRow[]>();
+  for (const m of memberList) {
+    const list = map.get(m.organizationId) ?? [];
+    list.push(m);
+    map.set(m.organizationId, list);
+  }
+  return map;
+}
+
+function processMembership(
+  m: MembershipRow,
+  others: MemberRow[],
+  soloOrgIds: string[],
+  reassignTargets: Map<string, string>,
+  blockedOrgs: string[],
+) {
+  if (others.length === 0) {
+    soloOrgIds.push(m.orgId);
+    return;
+  }
+  if (m.role === "owner" && !others.some((o) => o.role === "owner")) {
+    blockedOrgs.push(m.orgName);
+    return;
+  }
+  others.sort((a, b) => (ROLE_PRIORITY[a.role] ?? 9) - (ROLE_PRIORITY[b.role] ?? 9));
+  reassignTargets.set(m.orgId, others[0]!.userId);
+}
+
+async function sweepAuthoredOrgs(
+  ctx: ContextValue,
+  userId: string,
+  soloOrgIds: string[],
+  reassignTargets: Map<string, string>,
+) {
+  const [authoredProjects, authoredFeatures] = await Promise.all([
+    ctx.db
+      .select({ orgId: projects.organizationId })
+      .from(projects)
+      .where(eq(projects.createdBy, userId)),
+    ctx.db
+      .select({ orgId: featureRequests.organizationId })
+      .from(featureRequests)
+      .where(eq(featureRequests.createdBy, userId)),
+  ]);
+
+  const authoredOrgIds = new Set<string>();
+  for (const row of authoredProjects) authoredOrgIds.add(row.orgId);
+  for (const row of authoredFeatures) authoredOrgIds.add(row.orgId);
+
+  const candidateOrgIds = Array.from(authoredOrgIds).filter(
+    (orgId) => !soloOrgIds.includes(orgId) && !reassignTargets.has(orgId),
+  );
+  if (candidateOrgIds.length === 0) return;
+
+  const anyMembers = await ctx.db
+    .select({ organizationId: members.organizationId, userId: members.userId })
+    .from(members)
+    .where(and(inArray(members.organizationId, candidateOrgIds), ne(members.userId, userId)));
+
+  const memberByOrg = new Map<string, string>();
+  for (const row of anyMembers) {
+    if (!memberByOrg.has(row.organizationId)) {
+      memberByOrg.set(row.organizationId, row.userId);
+    }
+  }
+
+  for (const orgId of candidateOrgIds) {
+    const targetUserId = memberByOrg.get(orgId);
+    if (targetUserId) {
+      reassignTargets.set(orgId, targetUserId);
+    } else {
+      soloOrgIds.push(orgId);
+    }
+  }
+}
+
+async function resolveAccountDeletionPlan(
+  ctx: ContextValue,
+  userId: string,
+): Promise<DeletionPlan> {
+  const myMemberships = await ctx.db
+    .select({
+      orgId: members.organizationId,
+      orgName: organizations.name,
+      role: members.role,
+    })
+    .from(members)
+    .innerJoin(organizations, eq(organizations.id, members.organizationId))
+    .where(eq(members.userId, userId));
+
+  const soloOrgIds: string[] = [];
+  const reassignTargets = new Map<string, string>();
+  const blockedOrgs: string[] = [];
+
+  const myOrgIds = myMemberships.map((m) => m.orgId);
+  const otherMembers: MemberRow[] = myOrgIds.length > 0
+    ? await ctx.db
+        .select({
+          organizationId: members.organizationId,
+          userId: members.userId,
+          role: members.role,
+        })
+        .from(members)
+        .where(and(inArray(members.organizationId, myOrgIds), ne(members.userId, userId)))
+    : [];
+
+  const othersByOrg = groupMembersByOrg(otherMembers);
+  for (const m of myMemberships) {
+    const others = othersByOrg.get(m.orgId) ?? [];
+    processMembership(m, others, soloOrgIds, reassignTargets, blockedOrgs);
+  }
+
+  if (blockedOrgs.length > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `You are the only owner of ${blockedOrgs.join(
+        ", ",
+      )}. Transfer ownership to another member (or remove the other members so the organization is deleted with your account) and try again.`,
+    });
+  }
+
+  await sweepAuthoredOrgs(ctx, userId, soloOrgIds, reassignTargets);
+
+  return { soloOrgIds, reassignTargets };
+}
+
+async function executeAccountDeletion(
+  ctx: ContextValue,
+  userId: string,
+  plan: DeletionPlan,
+) {
+  const { soloOrgIds, reassignTargets } = plan;
+  await ctx.db.transaction(async (tx) => {
+    if (soloOrgIds.length > 0) {
+      await tx.delete(organizations).where(inArray(organizations.id, soloOrgIds));
+    }
+    const reassignUpdates = Array.from(reassignTargets.entries()).flatMap(([orgId, targetId]) => [
+      tx
+        .update(projects)
+        .set({ createdBy: targetId })
+        .where(and(eq(projects.organizationId, orgId), eq(projects.createdBy, userId))),
+      tx
+        .update(featureRequests)
+        .set({ createdBy: targetId })
+        .where(and(eq(featureRequests.organizationId, orgId), eq(featureRequests.createdBy, userId))),
+    ]);
+    if (reassignUpdates.length > 0) {
+      await Promise.all(reassignUpdates);
+    }
+    // The user row cascades to sessions, accounts, memberships, device
+    // codes, GitHub installations, comments, and AI conversations.
+    await tx.delete(usersTable).where(eq(usersTable.id, userId));
+    await tx
+      .delete(verificationsTable)
+      .where(eq(verificationsTable.identifier, verificationIdentifier(userId)));
+  });
 }
 
 export const profileRouter = router({
@@ -226,100 +410,8 @@ export const profileRouter = router({
         });
       }
 
-      const myMemberships = await ctx.db
-        .select({
-          orgId: members.organizationId,
-          orgName: organizations.name,
-          role: members.role,
-        })
-        .from(members)
-        .innerJoin(organizations, eq(organizations.id, members.organizationId))
-        .where(eq(members.userId, userId));
-
-      const ROLE_PRIORITY: Record<string, number> = {
-        owner: 0,
-        admin: 1,
-        manager: 2,
-        developer: 3,
-      };
-
-      const soloOrgIds: string[] = [];
-      const reassignTargets = new Map<string, string>(); // orgId -> new createdBy
-      const blockedOrgs: string[] = [];
-
-      for (const m of myMemberships) {
-        const others = await ctx.db
-          .select({ userId: members.userId, role: members.role })
-          .from(members)
-          .where(and(eq(members.organizationId, m.orgId), ne(members.userId, userId)));
-
-        if (others.length === 0) {
-          soloOrgIds.push(m.orgId);
-          continue;
-        }
-        if (m.role === "owner" && !others.some((o) => o.role === "owner")) {
-          blockedOrgs.push(m.orgName);
-          continue;
-        }
-        others.sort((a, b) => (ROLE_PRIORITY[a.role] ?? 9) - (ROLE_PRIORITY[b.role] ?? 9));
-        reassignTargets.set(m.orgId, others[0]!.userId);
-      }
-
-      if (blockedOrgs.length > 0) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `You are the only owner of ${blockedOrgs.join(
-            ", ",
-          )}. Transfer ownership to another member (or remove the other members so the organization is deleted with your account) and try again.`,
-        });
-      }
-
-      // Content authored in orgs the user is no longer a member of would still
-      // block the delete via the RESTRICT FKs — sweep those orgs the same way.
-      const authoredOrgIds = new Set<string>();
-      const authoredProjects = await ctx.db
-        .select({ orgId: projects.organizationId })
-        .from(projects)
-        .where(eq(projects.createdBy, userId));
-      const authoredFeatures = await ctx.db
-        .select({ orgId: featureRequests.organizationId })
-        .from(featureRequests)
-        .where(eq(featureRequests.createdBy, userId));
-      for (const row of [...authoredProjects, ...authoredFeatures]) authoredOrgIds.add(row.orgId);
-
-      for (const orgId of authoredOrgIds) {
-        if (soloOrgIds.includes(orgId) || reassignTargets.has(orgId)) continue;
-        const [anyMember] = await ctx.db
-          .select({ userId: members.userId })
-          .from(members)
-          .where(and(eq(members.organizationId, orgId), ne(members.userId, userId)))
-          .limit(1);
-        // An org with no remaining members has nobody left to own the content.
-        if (anyMember) reassignTargets.set(orgId, anyMember.userId);
-        else soloOrgIds.push(orgId);
-      }
-
-      await ctx.db.transaction(async (tx) => {
-        if (soloOrgIds.length > 0) {
-          await tx.delete(organizations).where(inArray(organizations.id, soloOrgIds));
-        }
-        for (const [orgId, targetId] of reassignTargets) {
-          await tx
-            .update(projects)
-            .set({ createdBy: targetId })
-            .where(and(eq(projects.organizationId, orgId), eq(projects.createdBy, userId)));
-          await tx
-            .update(featureRequests)
-            .set({ createdBy: targetId })
-            .where(and(eq(featureRequests.organizationId, orgId), eq(featureRequests.createdBy, userId)));
-        }
-        // The user row cascades to sessions, accounts, memberships, device
-        // codes, GitHub installations, comments, and AI conversations.
-        await tx.delete(usersTable).where(eq(usersTable.id, userId));
-        await tx
-          .delete(verificationsTable)
-          .where(eq(verificationsTable.identifier, verificationIdentifier(userId)));
-      });
+      const plan = await resolveAccountDeletionPlan(ctx, userId);
+      await executeAccountDeletion(ctx, userId, plan);
 
       return { deleted: true };
     }),

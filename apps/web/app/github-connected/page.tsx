@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Github, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 
 /**
  * Landing page for the GitHub install/configure popup.
@@ -48,9 +49,7 @@ export default function GithubConnectedPage() {
       /* opener severed by COOP — BroadcastChannel already covered it */
     }
 
-    // Try to close the popup; if we're not in a popup (or close is blocked),
-    // navigate the main app to /github so the flow still completes.
-    const fallbackUrl = `/github${installationId ? `?installationId=${installationId}` : ""}`;
+    const fallbackUrl = installationId ? `/github?installationId=${installationId}` : "/github";
     const closeTimer = setTimeout(() => window.close(), 250);
     const navTimer = setTimeout(() => {
       if (!window.closed) {
@@ -69,7 +68,7 @@ export default function GithubConnectedPage() {
     <main className="grid min-h-screen place-items-center bg-[#090b10] text-foreground">
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="grid size-12 place-items-center rounded-xl bg-foreground/5 text-primary">
-          <Github className="size-6" />
+          <SiGithub className="size-6" />
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />

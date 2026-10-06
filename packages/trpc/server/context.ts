@@ -153,34 +153,39 @@ export type ContextValue = {
   publish: PublishOrgEvent;
 };
 
-const noopEmit = async () => {};
-const noopClarify = async (): Promise<ClarifyResult> => ({
-  reply: "Can you describe the target users and the success metric for this feature?",
-  isDone: false,
-});
-const noopEditPrd = async ({ currentPrd }: { currentPrd: PrdContent }): Promise<EditPrdResult> => ({
-  ...currentPrd,
-  estimatedTotalHours: currentPrd.estimatedTotalHours ?? null,
-  rawMarkdown: "",
-});
-const noopGenerateImplPrompts = async (): Promise<GenerateImplPromptsResult> => ({
-  combinedPrompt: "",
-});
-const noopGenerateQuickPrompt = async (): Promise<GenerateQuickPromptResult> => ({
-  prompt: "",
-});
-const noopAssistantChat = async (): Promise<AssistantChatResult> => ({
-  reply: "The assistant is not available in this environment.",
-});
-const noopSendInvite = async () => {};
-const noopSendPrdShare = async () => {};
-const noopSendVerificationCode = async () => {};
-const noopPublish: PublishOrgEvent = async () => {};
+const noopEmit = () => Promise.resolve();
+const noopClarify = (): Promise<ClarifyResult> =>
+  Promise.resolve({
+    reply: "Can you describe the target users and the success metric for this feature?",
+    isDone: false,
+  });
+const noopEditPrd = ({ currentPrd }: { currentPrd: PrdContent }): Promise<EditPrdResult> =>
+  Promise.resolve({
+    ...currentPrd,
+    estimatedTotalHours: currentPrd.estimatedTotalHours ?? null,
+    rawMarkdown: "",
+  });
+const noopGenerateImplPrompts = (): Promise<GenerateImplPromptsResult> =>
+  Promise.resolve({
+    combinedPrompt: "",
+  });
+const noopGenerateQuickPrompt = (): Promise<GenerateQuickPromptResult> =>
+  Promise.resolve({
+    prompt: "",
+  });
+const noopAssistantChat = (): Promise<AssistantChatResult> =>
+  Promise.resolve({
+    reply: "The assistant is not available in this environment.",
+  });
+const noopSendInvite = () => Promise.resolve();
+const noopSendPrdShare = () => Promise.resolve();
+const noopSendVerificationCode = () => Promise.resolve();
+const noopPublish: PublishOrgEvent = () => Promise.resolve();
 
-export async function createContext(
+export function createContext(
   options: CreateContextOptions = {},
 ): Promise<ContextValue> {
-  return {
+  return Promise.resolve({
     db,
     request: options.request,
     session: options.session ?? null,

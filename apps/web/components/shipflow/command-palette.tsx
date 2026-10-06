@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FolderGit2, FolderKanban, Layers, Plus, Search } from "lucide-react";
 
@@ -81,8 +81,11 @@ export function CommandPalette({ children }: { children: React.ReactNode }) {
     items: results.filter((r) => r.type === type),
   })).filter((g) => g.items.length > 0);
 
+  const openPalette = useCallback(() => setOpen(true), []);
+  const contextValue = useMemo(() => ({ open: openPalette }), [openPalette]);
+
   return (
-    <CommandPaletteContext.Provider value={{ open: () => setOpen(true) }}>
+    <CommandPaletteContext.Provider value={contextValue}>
       {children}
 
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>

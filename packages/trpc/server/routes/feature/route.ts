@@ -119,7 +119,7 @@ export const featureRouter = router({
         })
         .optional(),
     )
-    .query(async ({ ctx, input }) => {
+    .query(({ ctx, input }) => {
       const conditions = [eq(featureRequests.organizationId, ctx.org.id)];
 
       if (input?.projectId) {

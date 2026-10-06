@@ -17,7 +17,7 @@ export const reviewPullRequestFunction = inngest.createFunction(
 
     // Legacy / direct-invocation path (no DB record) — review the inline payload.
     if (!pullRequestId) {
-      return step.run("review-webhook-payload", async () =>
+      return await step.run("review-webhook-payload", async () =>
         reviewPullRequestAgainstPrd({
           repoFullName: event.data.repoFullName,
           pullRequestTitle: event.data.pullRequestTitle,
@@ -29,7 +29,7 @@ export const reviewPullRequestFunction = inngest.createFunction(
     }
 
     // Standard path: run the shared review pipeline for the cached PR.
-    return step.run("run-review", async () => {
+    return await step.run("run-review", async () => {
       try {
         return await runReviewForPullRequest(pullRequestId);
       } catch (error) {

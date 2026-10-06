@@ -126,7 +126,7 @@ function deriveTitle(content: string): string {
 export const assistantRouter = router({
   quota: orgProcedure.query(({ ctx }) => computeChatQuota(ctx, ctx.org.id)),
 
-  listConversations: orgProcedure.query(async ({ ctx }) => {
+  listConversations: orgProcedure.query(({ ctx }) => {
     return ctx.db
       .select({
         id: aiConversations.id,

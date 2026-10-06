@@ -317,6 +317,54 @@ type Accumulator = {
 
 type SegmentOutcome = "done" | "paused" | "error" | "cancelled";
 
+function consumeChunk(
+  chunk: string,
+  acc: Accumulator,
+  inError: boolean,
+): { inError: boolean; paused: boolean } {
+  if (inError) {
+    acc.errorText = (acc.errorText ?? "") + chunk;
+    return { inError: true, paused: false };
+  }
+  const errIdx = chunk.indexOf(ERROR_SENTINEL);
+  if (errIdx >= 0) {
+    acc.jsonText += chunk.slice(0, errIdx);
+    acc.errorText = (acc.errorText ?? "") + chunk.slice(errIdx + 1);
+    return { inError: true, paused: false };
+  }
+  const pauseIdx = chunk.indexOf(PAUSE_SENTINEL);
+  if (pauseIdx >= 0) {
+    acc.jsonText += chunk.slice(0, pauseIdx);
+    return { inError: false, paused: true };
+  }
+  acc.jsonText += chunk;
+  return { inError: false, paused: false };
+}
+
+async function updateLivePlan(
+  acc: Accumulator,
+  sessionId: string,
+  onProgress: () => void,
+  force: boolean,
+) {
+  const now = Date.now();
+  if (!force && now - acc.lastParsedAt < 150) return;
+  acc.lastParsedAt = now;
+  try {
+    const { value } = await parsePartialJson(acc.jsonText);
+    if (value && typeof value === "object") {
+      acc.latest = value as PartialAgentPlan;
+      const s = getSnapshot();
+      if (s.run?.sessionId === sessionId) {
+        setState({ ...s, run: { sessionId, livePlan: acc.latest } }, { skipPersist: true });
+      }
+      onProgress();
+    }
+  } catch {
+    /* ignore parse errors during streaming */
+  }
+}
+
 /**
  * Read one streamed segment into the accumulator, returning how it ended.
  * The body is raw JSON text; a trailing ERROR/PAUSE sentinel (never valid
@@ -334,10 +382,71 @@ async function readSegment(
   let paused = false;
   let inError = false;
 
-  const parseLatest = async (force: boolean) => {
-    const now = Date.now();
-    if (!force && now - acc.lastParsedAt < 150) return;
-    acc.lastParsedAt = now;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const res = consumeChunk(chunk, acc, inError);
+      inError = res.inError;
+      paused = res.paused;
+      if (paused) {
+        await updateLivePlan(acc, sessionId, onProgress, true);
+        break;
+      }
+      if (!inError) {
+        await updateLivePlan(acc, sessionId, onProgress, false);
+      }
+    }
+    await updateLivePlan(acc, sessionId, onProgress, true);
+  } catch {
+    if (signal.aborted) return "cancelled";
+    await updateLivePlan(acc, sessionId, onProgress, true);
+    return "paused";
+  }
+
+  if (inError) return "error";
+  return paused ? "paused" : "done";
+}
+
+function finalizeRun(
+  sessionId: string,
+  payload: AgentRunPayload,
+  acc: Accumulator,
+  cancelled: boolean,
+) {
+  clearActive();
+  const s = getSnapshot();
+  const plan = normalizePlan(acc.latest);
+  // Keep whatever was generated — a failed or cancelled run must never wipe
+  // the output. The session may have been deleted meanwhile; then drop it.
+  const sessions = planHasContent(plan)
+    ? touchSession(s.sessions, sessionId, (session) => ({
+        ...session,
+        messages: [
+          ...session.messages,
+          {
+            id: uid(),
+            role: "assistant" as const,
+            plan,
+            featureId: payload.featureId,
+            ...(cancelled ? { cancelled: true } : {}),
+          },
+        ],
+      }))
+    : s.sessions;
+  setState({ ...s, sessions, run: null });
+  abortController = null;
+  if (cancelled) {
+    toast.info("Generation stopped — kept what was written so far.");
+  } else if (acc.errorText?.trim()) {
+    toast.error(acc.errorText.trim());
+  }
+}
+
+async function seedInitialState(sessionId: string, acc: Accumulator) {
+  if (!acc.jsonText) return;
+  try {
     const { value } = await parsePartialJson(acc.jsonText);
     if (value && typeof value === "object") {
       acc.latest = value as PartialAgentPlan;
@@ -345,52 +454,37 @@ async function readSegment(
       if (s.run?.sessionId === sessionId) {
         setState({ ...s, run: { sessionId, livePlan: acc.latest } }, { skipPersist: true });
       }
-      onProgress();
     }
-  };
-
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-
-      if (inError) {
-        acc.errorText = (acc.errorText ?? "") + chunk;
-        continue;
-      }
-      const errIdx = chunk.indexOf(ERROR_SENTINEL);
-      if (errIdx >= 0) {
-        acc.jsonText += chunk.slice(0, errIdx);
-        acc.errorText = (acc.errorText ?? "") + chunk.slice(errIdx + 1);
-        inError = true;
-        continue;
-      }
-      const pauseIdx = chunk.indexOf(PAUSE_SENTINEL);
-      if (pauseIdx >= 0) {
-        acc.jsonText += chunk.slice(0, pauseIdx);
-        paused = true;
-        await parseLatest(true);
-        break;
-      }
-      acc.jsonText += chunk;
-      await parseLatest(false);
-    }
-    await parseLatest(true);
   } catch {
-    if (signal.aborted) return "cancelled";
-    // A dropped connection mid-run is recoverable — treat it like a pause so we
-    // reconnect via /continue rather than discarding the work.
-    try {
-      await parseLatest(true);
-    } catch {
-      /* keep whatever parsed last */
-    }
-    return "paused";
+    /* keep going — the segment will re-parse */
   }
+}
 
-  if (inError) return "error";
-  return paused ? "paused" : "done";
+async function fetchStreamResponse(
+  mode: "start" | "continue",
+  payload: AgentRunPayload,
+  runId: string | null,
+  signal: AbortSignal,
+): Promise<{ ok: true; response: Response } | { ok: false; error?: string; cancelled: boolean }> {
+  try {
+    const url = mode === "start" ? "/api/agent/stream" : "/api/agent/stream/continue";
+    const body = mode === "start" ? payload : { ...payload, runId };
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!response.ok || !response.body) {
+      const err = (await response.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, error: err?.error ?? "The agent run failed.", cancelled: false };
+    }
+    return { ok: true, response };
+  } catch {
+    const cancelled = signal.aborted;
+    const error = (!cancelled && !runId) ? "Network error — couldn't reach the agent." : undefined;
+    return { ok: false, error, cancelled };
+  }
 }
 
 /**
@@ -414,9 +508,6 @@ async function driveRun(
   let mode: "start" | "continue" = opts.runId ? "continue" : "start";
   let cancelled = false;
 
-  // Mirror to localStorage for reload recovery. Redis holds the authoritative
-  // text, so the local jsonText copy is just a fallback — throttle it (it can be
-  // large) but always force a save at segment boundaries.
   let lastMirrorAt = 0;
   const mirror = (force = false) => {
     if (!runId) return;
@@ -426,85 +517,21 @@ async function driveRun(
     saveActive({ runId, sessionId, payload, jsonText: acc.jsonText });
   };
 
-  const finish = () => {
-    clearActive();
-    const s = getSnapshot();
-    const plan = normalizePlan(acc.latest);
-    // Keep whatever was generated — a failed or cancelled run must never wipe
-    // the output. The session may have been deleted meanwhile; then drop it.
-    const sessions = planHasContent(plan)
-      ? touchSession(s.sessions, sessionId, (session) => ({
-          ...session,
-          messages: [
-            ...session.messages,
-            {
-              id: uid(),
-              role: "assistant" as const,
-              plan,
-              featureId: payload.featureId,
-              ...(cancelled ? { cancelled: true } : {}),
-            },
-          ],
-        }))
-      : s.sessions;
-    setState({ ...s, sessions, run: null });
-    abortController = null;
-    if (cancelled) toast.info("Generation stopped — kept what was written so far.");
-    else if (acc.errorText?.trim()) toast.error(acc.errorText.trim());
-  };
+  await seedInitialState(sessionId, acc);
 
-  // Seed the live view from any recovered text.
-  if (acc.jsonText) {
-    try {
-      const { value } = await parsePartialJson(acc.jsonText);
-      if (value && typeof value === "object") {
-        acc.latest = value as PartialAgentPlan;
-        const s = getSnapshot();
-        if (s.run?.sessionId === sessionId) {
-          setState({ ...s, run: { sessionId, livePlan: acc.latest } }, { skipPersist: true });
-        }
-      }
-    } catch {
-      /* keep going — the segment will re-parse */
-    }
-  }
-
-  for (;;) {
-    if (signal.aborted) {
-      cancelled = true;
+  while (!signal.aborted) {
+    const res = await fetchStreamResponse(mode, payload, runId, signal);
+    if (!res.ok) {
+      cancelled = res.cancelled;
+      if (res.error) acc.errorText = res.error;
       break;
     }
 
-    let response: Response;
-    try {
-      const url =
-        mode === "start" ? "/api/agent/stream" : "/api/agent/stream/continue";
-      const body = mode === "start" ? payload : { ...payload, runId };
-      response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal,
-      });
-    } catch {
-      cancelled = signal.aborted;
-      // A transient network failure on a run we already have an id for is
-      // resumable on the next load; otherwise it's a hard failure.
-      if (!cancelled && !runId) acc.errorText = "Network error — couldn't reach the agent.";
-      break;
-    }
-
-    if (!response.ok || !response.body) {
-      const err = (await response.json().catch(() => null)) as { error?: string } | null;
-      acc.errorText = err?.error ?? "The agent run failed.";
-      break;
-    }
-
-    const headerRunId = response.headers.get(RUN_ID_HEADER);
+    const headerRunId = res.response.headers.get(RUN_ID_HEADER);
     if (headerRunId) runId = headerRunId;
     mirror(true);
 
-    const outcome = await readSegment(response, acc, sessionId, () => mirror(), signal);
+    const outcome = await readSegment(res.response, acc, sessionId, () => mirror(), signal);
     mirror(true);
 
     if (outcome === "cancelled") {
@@ -516,14 +543,17 @@ async function driveRun(
     }
     // paused → continue the same run in another segment.
     if (!runId) {
-      // No id to resume with — treat as a stop rather than loop forever.
       acc.errorText = acc.errorText ?? "The run was interrupted and can't be resumed.";
       break;
     }
     mode = "continue";
   }
 
-  finish();
+  if (signal.aborted) {
+    cancelled = true;
+  }
+
+  finalizeRun(sessionId, payload, acc, cancelled);
 }
 
 // ---------------------------------------------------------------------------

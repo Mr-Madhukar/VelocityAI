@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Check, Copy, Github, LayoutList, Loader2, Lock, Sparkles, Wand2 } from "lucide-react";
+import { ArrowRight, Check, Copy, LayoutList, Loader2, Lock, Sparkles, Wand2 } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 import { toast } from "sonner";
 
 import { recommendedStacks } from "@repo/services/shipflow/tech-stacks";
@@ -18,10 +19,10 @@ export type TasksView = "board" | "prompts";
 export function TasksViewToggle({
   view,
   onChange,
-}: {
+}: Readonly<{
   view: TasksView;
   onChange: (v: TasksView) => void;
-}) {
+}>) {
   const promptsActive = view === "prompts";
   return (
     <div className="inline-flex items-center gap-2">
@@ -34,7 +35,7 @@ export function TasksViewToggle({
           "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
           view === "board"
             ? "border-primary/40 bg-primary text-primary-foreground shadow-sm"
-            : "border-border bg-foreground/[0.03] text-muted-foreground hover:text-foreground",
+            : "border-border bg-foreground/3 text-muted-foreground hover:text-foreground",
         )}
       >
         <LayoutList className="size-3.5" />
@@ -63,7 +64,7 @@ export function TasksViewToggle({
           "relative inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
           promptsActive
             ? "border-primary/50 bg-primary text-primary-foreground shadow-sm"
-            : "border-amber-400/70 bg-amber-400/[0.08] text-amber-600 dark:text-amber-300",
+            : "border-amber-400/70 bg-amber-400/8 text-amber-600 dark:text-amber-300",
         )}
       >
         <Sparkles className="size-3.5" />
@@ -75,7 +76,7 @@ export function TasksViewToggle({
 
 const normalizeStack = (raw: string): string => raw.trim().replace(/\s+/g, " ").toLowerCase();
 
-function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+function CopyButton({ text, label = "Copy" }: Readonly<{ text: string; label?: string }>) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -93,7 +94,229 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
-export function ImplementationPromptsPanel({ featureId }: { featureId: string }) {
+function RepoConnectedBanner({
+  selectedStack,
+  repoStack,
+}: Readonly<{
+  selectedStack: string;
+  repoStack?: string | null;
+}>) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2.5">
+        <Lock className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+          {selectedStack || "Detecting your repository's stack…"}
+        </span>
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-success">
+          From repo
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {repoStack
+          ? "Locked to your connected repository's detected stack — prompts are generated against your real codebase."
+          : "Analyzing your connected repository to detect its stack…"}
+      </p>
+    </div>
+  );
+}
+
+function RepoConnectNudge() {
+  return (
+    <Link
+      href="/github"
+      className="group flex items-start gap-3 rounded-md border border-dashed border-primary/30 bg-primary/4 p-3 transition-colors hover:border-primary/50 hover:bg-primary/7"
+    >
+      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border border-primary/30 bg-background text-primary">
+        <SiGithub className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          Connect a repository for sharper prompts
+          <ArrowRight className="size-3.5 text-primary transition-transform group-hover:translate-x-0.5" />
+        </span>
+        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+          Unlocks accurate tech-stack detection, better prompt generation, and full codebase context.
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+function PromptStackPresets({
+  stackPresets,
+  selectedStack,
+  onSelectStack,
+  isCached,
+}: Readonly<{
+  stackPresets: string[];
+  selectedStack: string;
+  onSelectStack: (preset: string) => void;
+  isCached: (stack: string) => boolean;
+}>) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {stackPresets.map((preset) => {
+        const active = normalizeStack(preset) === normalizeStack(selectedStack);
+        return (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => onSelectStack(preset)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+              active
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {preset}
+            {isCached(preset) ? (
+              <span
+                title="Already generated — instant"
+                className="size-1.5 rounded-full bg-success"
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PromptCustomStackInput({
+  customStack,
+  onCustomStackChange,
+  onApply,
+}: Readonly<{
+  customStack: string;
+  onCustomStackChange: (val: string) => void;
+  onApply: () => void;
+}>) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        value={customStack}
+        onChange={(e) => onCustomStackChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onApply();
+          }
+        }}
+        placeholder="Custom stack, e.g. SvelteKit + Drizzle + Turso"
+        maxLength={120}
+        className="h-9 flex-1 border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-foreground/30 focus:outline-none"
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onApply}
+        disabled={!customStack.trim()}
+        className="h-9 border-border bg-background px-3 text-foreground hover:bg-foreground/10"
+      >
+        Use
+      </Button>
+    </div>
+  );
+}
+
+function StalePromptBanner({ onDismiss }: Readonly<{ onDismiss: () => void }>) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-l-2 border-amber-400/50 bg-amber-400/6 px-3 py-2">
+      <p className="text-xs text-amber-600 dark:text-amber-300">
+        These prompts were generated against an older PRD or task set. Regenerate to refresh them.
+      </p>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-amber-600/80 hover:text-amber-600 dark:text-amber-300/80 dark:hover:text-amber-300"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
+function PromptBody({
+  isLoading,
+  record,
+  selectedStack,
+  generating,
+  quotaBlocked,
+  quotaReason,
+  onGenerate,
+}: Readonly<{
+  isLoading: boolean;
+  record: { combinedPrompt: string } | null;
+  selectedStack: string;
+  generating: boolean;
+  quotaBlocked: boolean;
+  quotaReason?: string | null;
+  onGenerate: () => void;
+}>) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center border border-border bg-card py-16">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (record) {
+    return (
+      <div className="border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border bg-background/50 px-3 py-2">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            Implementation prompt
+          </span>
+          <CopyButton text={record.combinedPrompt} />
+        </div>
+        <pre
+          data-lenis-prevent
+          className="max-h-128 overflow-auto overscroll-contain whitespace-pre-wrap px-4 py-3 font-mono text-[11px] leading-relaxed text-foreground/90"
+        >
+          {record.combinedPrompt}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-foreground/10 bg-foreground/4.5 p-10 text-center">
+      <div className="flex flex-col items-center gap-4">
+        <Sparkles className="size-6 text-primary" />
+        <div className="space-y-1">
+          <p className="text-sm text-foreground/80">
+            No prompt generated for{" "}
+            <span className="font-medium text-foreground">{selectedStack || "this stack"}</span>{" "}
+            yet.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Generate one copy-paste-ready prompt covering the whole feature — tech stack,
+            files, build steps, and acceptance criteria.
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={onGenerate}
+          disabled={generating || !selectedStack.trim() || quotaBlocked}
+          title={quotaBlocked ? quotaReason ?? undefined : undefined}
+          className="gap-2 bg-primary text-primary-foreground hover:bg-primary disabled:opacity-50"
+        >
+          {generating ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+          Generate prompt
+        </Button>
+        {quotaBlocked && quotaReason ? (
+          <p className="text-xs text-amber-600 dark:text-amber-300">{quotaReason}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+export function ImplementationPromptsPanel({ featureId }: Readonly<{ featureId: string }>) {
   const utils = trpc.useUtils();
   const [selectedStack, setSelectedStack] = useState("");
   const [customStack, setCustomStack] = useState("");
@@ -194,113 +417,42 @@ export function ImplementationPromptsPanel({ featureId }: { featureId: string })
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Tech stack
           </p>
-          {isFetching && !isLoading ? (
+          {isFetching && !isLoading && (
             <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-          ) : null}
+          )}
         </div>
 
-        {isLoading && !data ? (
-          <div className="h-9 animate-pulse rounded-md border border-border bg-foreground/[0.03]" />
-        ) : repoConnected ? (
-          // Repo connected → stack is locked to the detected stack; no override.
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2.5">
-              <Lock className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                {selectedStack || "Detecting your repository's stack…"}
-              </span>
-              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-success">
-                From repo
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {data?.defaults.repoStack
-                ? "Locked to your connected repository's detected stack — prompts are generated against your real codebase."
-                : "Analyzing your connected repository to detect its stack…"}
-            </p>
-          </div>
-        ) : (
+        {isLoading && !data && (
+          <div className="h-9 animate-pulse rounded-md border border-border bg-foreground/3" />
+        )}
+
+        {!isLoading && repoConnected && (
+          <RepoConnectedBanner
+            selectedStack={selectedStack}
+            repoStack={data?.defaults.repoStack}
+          />
+        )}
+
+        {!isLoading && !repoConnected && (
           <>
-            {/* No repo connected → nudge the user to connect for sharper output. */}
-            <Link
-              href="/github"
-              className="group flex items-start gap-3 rounded-md border border-dashed border-primary/30 bg-primary/[0.04] p-3 transition-colors hover:border-primary/50 hover:bg-primary/[0.07]"
-            >
-              <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border border-primary/30 bg-background text-primary">
-                <Github className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                  Connect a repository for sharper prompts
-                  <ArrowRight className="size-3.5 text-primary transition-transform group-hover:translate-x-0.5" />
-                </span>
-                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
-                  Unlocks accurate tech-stack detection, better prompt generation, and full
-                  codebase context.
-                </span>
-              </span>
-            </Link>
-
-            <div className="flex flex-wrap gap-2">
-              {stackPresets.map((preset) => {
-                const active = normalizeStack(preset) === normalizeStack(selectedStack);
-                return (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setSelectedStack(preset)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
-                      active
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {preset}
-                    {isCached(preset) ? (
-                      <span
-                        title="Already generated — instant"
-                        className="size-1.5 rounded-full bg-success"
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom stack */}
-            <div className="flex items-center gap-2">
-              <input
-                value={customStack}
-                onChange={(e) => setCustomStack(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    applyCustomStack();
-                  }
-                }}
-                placeholder="Custom stack, e.g. SvelteKit + Drizzle + Turso"
-                maxLength={120}
-                className="h-9 flex-1 border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-foreground/30 focus:outline-none"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={applyCustomStack}
-                disabled={!customStack.trim()}
-                className="h-9 border-border bg-background px-3 text-foreground hover:bg-foreground/10"
-              >
-                Use
-              </Button>
-            </div>
-
-            {!selectedIsPreset && selectedStack ? (
+            <RepoConnectNudge />
+            <PromptStackPresets
+              stackPresets={stackPresets}
+              selectedStack={selectedStack}
+              onSelectStack={setSelectedStack}
+              isCached={isCached}
+            />
+            <PromptCustomStackInput
+              customStack={customStack}
+              onCustomStackChange={setCustomStack}
+              onApply={applyCustomStack}
+            />
+            {!selectedIsPreset && selectedStack && (
               <p className="text-xs text-muted-foreground">
                 Selected stack:{" "}
                 <span className="font-medium text-foreground">{selectedStack}</span>
               </p>
-            ) : null}
+            )}
           </>
         )}
 
@@ -311,7 +463,7 @@ export function ImplementationPromptsPanel({ featureId }: { featureId: string })
                 ? "The prompt is tailored to the selected stack and cached — switching to a generated stack is instant."
                 : "Generate a copy-paste-ready prompt for an AI coding agent."}
             </p>
-            {quota ? (
+            {quota && (
               <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {quota.featureUsed}/{quota.featureLimit} for this feature ·{" "}
                 {quota.periodLimit === -1
@@ -319,7 +471,7 @@ export function ImplementationPromptsPanel({ featureId }: { featureId: string })
                   : `${quota.periodUsed}/${quota.periodLimit}`}{" "}
                 this month ({quota.planLabel})
               </p>
-            ) : null}
+            )}
           </div>
           <Button
             type="button"
@@ -337,8 +489,8 @@ export function ImplementationPromptsPanel({ featureId }: { featureId: string })
           </Button>
         </div>
 
-        {quotaBlocked ? (
-          <div className="flex items-center justify-between gap-3 border-l-2 border-amber-400/50 bg-amber-400/[0.06] px-3 py-2">
+        {quotaBlocked && (
+          <div className="flex items-center justify-between gap-3 border-l-2 border-amber-400/50 bg-amber-400/6 px-3 py-2">
             <p className="text-xs text-amber-600 dark:text-amber-300">{quota?.reason}</p>
             <a
               href="/billing"
@@ -347,85 +499,20 @@ export function ImplementationPromptsPanel({ featureId }: { featureId: string })
               Upgrade →
             </a>
           </div>
-        ) : null}
+        )}
       </div>
 
-      {/* Stale banner */}
-      {stale ? (
-        <div className="flex items-center justify-between gap-3 border-l-2 border-amber-400/50 bg-amber-400/[0.06] px-3 py-2">
-          <p className="text-xs text-amber-600 dark:text-amber-300">
-            These prompts were generated against an older PRD or task set. Regenerate to refresh
-            them.
-          </p>
-          <button
-            type="button"
-            onClick={() => setStaleDismissed(true)}
-            className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-amber-600/80 hover:text-amber-600 dark:text-amber-300/80 dark:hover:text-amber-300"
-          >
-            Dismiss
-          </button>
-        </div>
-      ) : null}
+      {stale && <StalePromptBanner onDismiss={() => setStaleDismissed(true)} />}
 
-      {/* Body */}
-      {isLoading ? (
-        <div className="flex items-center justify-center border border-border bg-card py-16">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : record ? (
-        <div className="border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border bg-background/50 px-3 py-2">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Implementation prompt
-            </span>
-            <CopyButton text={record.combinedPrompt} />
-          </div>
-          {/* data-lenis-prevent lets the mouse wheel scroll this natively —
-              without it Lenis hijacks the wheel and scrolls the page instead. */}
-          <pre
-            data-lenis-prevent
-            className="max-h-[32rem] overflow-auto overscroll-contain whitespace-pre-wrap px-4 py-3 font-mono text-[11px] leading-relaxed text-foreground/90"
-          >
-            {record.combinedPrompt}
-          </pre>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-foreground/10 bg-foreground/[0.045] p-10 text-center">
-          <div className="flex flex-col items-center gap-4">
-            <Sparkles className="size-6 text-primary" />
-            <div className="space-y-1">
-              <p className="text-sm text-foreground/80">
-                No prompt generated for{" "}
-                <span className="font-medium text-foreground">
-                  {selectedStack || "this stack"}
-                </span>{" "}
-                yet.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Generate one copy-paste-ready prompt covering the whole feature — tech stack,
-                files, build steps, and acceptance criteria.
-              </p>
-            </div>
-            <Button
-              type="button"
-              onClick={runGenerate}
-              disabled={generating || !selectedStack.trim() || quotaBlocked}
-              title={quotaBlocked ? quota?.reason ?? undefined : undefined}
-              className="gap-2 bg-primary text-primary-foreground hover:bg-primary disabled:opacity-50"
-            >
-              {generating ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Wand2 className="size-4" />
-              )}
-              Generate prompt
-            </Button>
-            {quotaBlocked ? (
-              <p className="text-xs text-amber-600 dark:text-amber-300">{quota?.reason}</p>
-            ) : null}
-          </div>
-        </div>
-      )}
+      <PromptBody
+        isLoading={isLoading}
+        record={record}
+        selectedStack={selectedStack}
+        generating={generating}
+        quotaBlocked={quotaBlocked}
+        quotaReason={quota?.reason}
+        onGenerate={runGenerate}
+      />
     </div>
   );
 }

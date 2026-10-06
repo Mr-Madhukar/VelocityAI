@@ -55,7 +55,7 @@ export const orgRouter = router({
       return org;
     }),
 
-  list: protectedProcedure.query(async ({ ctx }) =>
+  list: protectedProcedure.query(({ ctx }) =>
     ctx.db
       .select({
         id: organizations.id,

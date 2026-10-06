@@ -71,12 +71,12 @@ function StatPill({
   label,
   value,
   href,
-}: {
+}: Readonly<{
   icon: React.ReactNode;
   label: string;
   value: number | string;
   href?: string;
-}) {
+}>) {
   const inner = (
     <>
       <div className="text-muted-foreground transition-colors group-hover:text-primary">{icon}</div>
@@ -88,7 +88,7 @@ function StatPill({
   );
 
   const base =
-    "group flex items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.03] px-4 py-3";
+    "group flex items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/3 px-4 py-3";
 
   if (href) {
     return (
@@ -96,7 +96,7 @@ function StatPill({
         href={href}
         target="_blank"
         rel="noreferrer"
-        className={cn(base, "cursor-pointer transition hover:border-primary/30 hover:bg-foreground/[0.06]")}
+        className={cn(base, "cursor-pointer transition hover:border-primary/30 hover:bg-foreground/6")}
         title={`Open ${label.toLowerCase()} on GitHub`}
       >
         {inner}
@@ -107,7 +107,7 @@ function StatPill({
   return <div className={base}>{inner}</div>;
 }
 
-function ReviewBadge({ review }: { review: { status: string; overallVerdict: string | null; prdComplianceScore: number | null } | null }) {
+function ReviewBadge({ review }: Readonly<{ review: { status: string; overallVerdict: string | null; prdComplianceScore: number | null } | null }>) {
   if (!review) {
     return <span className="rounded-full border border-foreground/10 bg-foreground/5 px-2 py-0.5 text-[11px] text-muted-foreground">No review</span>;
   }
@@ -132,7 +132,7 @@ function ReviewBadge({ review }: { review: { status: string; overallVerdict: str
   );
 }
 
-function PrStateBadge({ state }: { state: string }) {
+function PrStateBadge({ state }: Readonly<{ state: string }>) {
   if (state === "merged") {
     return <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 px-2 py-0.5 text-[11px] font-medium text-purple-600 dark:text-purple-300"><GitMerge className="size-3" />Merged</span>;
   }
@@ -146,7 +146,7 @@ function Shimmer() {
   return (
     <div className="space-y-3">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="h-16 animate-pulse rounded-xl border border-foreground/10 bg-foreground/[0.03]" />
+        <div key={i} className="h-16 animate-pulse rounded-xl border border-foreground/10 bg-foreground/3" />
       ))}
     </div>
   );
@@ -167,7 +167,69 @@ type AiSummary =
  * AI-generated summary of the repository (from the stored repo_context
  * snapshot). Built automatically on connect; refreshable on demand.
  */
-function AiSummaryCard({ repositoryId }: { repositoryId: string }) {
+function renderSummaryContent(
+  loading: boolean,
+  building: boolean,
+  indexed: Extract<AiSummary, { indexed: true }> | null,
+  showFiles: boolean,
+  setShowFiles: React.Dispatch<React.SetStateAction<boolean>>,
+) {
+  if (loading) {
+    return (
+      <div className="mt-3 space-y-2">
+        <div className="h-3.5 w-4/5 animate-pulse rounded bg-foreground/10" />
+        <div className="h-3.5 w-3/5 animate-pulse rounded bg-foreground/10" />
+      </div>
+    );
+  }
+  if (building) {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        Reading the repository and generating a summary — this can take a minute…
+      </p>
+    );
+  }
+  if (!indexed) {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        No summary yet. Generate one to get an AI overview of what this codebase is, its stack,
+        and what its key files do — it also powers the coding Agent&apos;s repo context.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 space-y-3">
+      <p className="text-sm leading-6 text-foreground/85">{indexed.overview}</p>
+      {indexed.stack && (
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground/70">Stack:</span> {indexed.stack}
+        </p>
+      )}
+      {indexed.keyFiles.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowFiles((v) => !v)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
+          >
+            {showFiles ? "Hide key files" : `Key files (${indexed.keyFiles.length})`}
+          </button>
+          {showFiles && (
+            <ul className="mt-2 space-y-1.5">
+              {indexed.keyFiles.map((f) => (
+                <li key={f.path} className="text-xs text-muted-foreground">
+                  <span className="font-mono text-foreground/75">{f.path}</span> — {f.summary}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AiSummaryCard({ repositoryId }: Readonly<{ repositoryId: string }>) {
   const [summary, setSummary] = useState<AiSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [building, setBuilding] = useState(false);
@@ -200,7 +262,7 @@ function AiSummaryCard({ repositoryId }: { repositoryId: string }) {
   const indexed = summary?.indexed === true ? summary : null;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-br from-primary/[0.06] via-transparent to-transparent p-5">
+    <div className="relative overflow-hidden rounded-xl border border-primary/15 bg-linear-to-br from-primary/6 via-transparent to-transparent p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
           <Sparkles className="size-4 text-primary" />
@@ -224,50 +286,7 @@ function AiSummaryCard({ repositoryId }: { repositoryId: string }) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="mt-3 space-y-2">
-          <div className="h-3.5 w-4/5 animate-pulse rounded bg-foreground/10" />
-          <div className="h-3.5 w-3/5 animate-pulse rounded bg-foreground/10" />
-        </div>
-      ) : building ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Reading the repository and generating a summary — this can take a minute…
-        </p>
-      ) : !indexed ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          No summary yet. Generate one to get an AI overview of what this codebase is, its stack,
-          and what its key files do — it also powers the coding Agent&apos;s repo context.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-3">
-          <p className="text-sm leading-6 text-foreground/85">{indexed.overview}</p>
-          {indexed.stack && (
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground/70">Stack:</span> {indexed.stack}
-            </p>
-          )}
-          {indexed.keyFiles.length > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowFiles((v) => !v)}
-                className="inline-flex items-center gap-1 text-xs font-medium text-primary transition hover:underline"
-              >
-                {showFiles ? "Hide key files" : `Key files (${indexed.keyFiles.length})`}
-              </button>
-              {showFiles && (
-                <ul className="mt-2 space-y-1.5">
-                  {indexed.keyFiles.map((f) => (
-                    <li key={f.path} className="text-xs text-muted-foreground">
-                      <span className="font-mono text-foreground/75">{f.path}</span> — {f.summary}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {renderSummaryContent(loading, building, indexed, showFiles, setShowFiles)}
     </div>
   );
 }
@@ -292,11 +311,11 @@ function PrRow({
   pr,
   features,
   onChanged,
-}: {
+}: Readonly<{
   pr: Pr;
   features: Array<{ id: string; title: string }>;
   onChanged: () => void;
-}) {
+}>) {
   const [reviewing, setReviewing] = useState(false);
   const [linking, setLinking] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>(features[0]?.id ?? "");
@@ -374,7 +393,7 @@ function PrRow({
             <PrStateBadge state={pr.state} />
             {pr.featureId ? (
               <span
-                className="inline-flex max-w-[220px] items-center gap-1 truncate rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                className="inline-flex max-w-55 items-center gap-1 truncate rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
                 title="Linked feature"
               >
                 <Link2 className="size-3 shrink-0" />
@@ -463,7 +482,7 @@ function PrRow({
       </div>
 
       {linking && (
-        <div className="mt-3 rounded-lg border border-foreground/10 bg-foreground/[0.03] p-3">
+        <div className="mt-3 rounded-lg border border-foreground/10 bg-foreground/3 p-3">
           <p className="mb-2 text-xs text-muted-foreground">
             Link this PR to a feature. Its review history attaches to the feature and future commits stay linked — no branch rename needed.
           </p>
@@ -481,7 +500,7 @@ function PrRow({
               <select
                 value={selectedFeatureId}
                 onChange={(e) => setSelectedFeatureId(e.target.value)}
-                className="max-w-[260px] flex-1 cursor-pointer rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary/40"
+                className="max-w-65 flex-1 cursor-pointer rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary/40"
               >
                 {features.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -513,7 +532,7 @@ function PrRow({
   );
 }
 
-export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onBack: () => void }) {
+export function GithubRepoDashboard({ repo, onBack }: Readonly<{ repo: ConnectedRepo; onBack: () => void }>) {
   const utils = trpc.useUtils();
   const [overview, setOverview] = useState<RepoOverview | null>(null);
   const [commits, setCommits] = useState<RepoCommit[]>([]);
@@ -612,7 +631,7 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
       </div>
 
       <Tabs defaultValue="overview" className="gap-5">
-        <TabsList className="h-auto flex-wrap justify-start rounded-lg border border-foreground/10 bg-foreground/[0.045] p-1">
+        <TabsList className="h-auto flex-wrap justify-start rounded-lg border border-foreground/10 bg-foreground/4.5 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Overview</TabsTrigger>
           <TabsTrigger value="prs" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Pull Requests ({prs.length})</TabsTrigger>
           <TabsTrigger value="commits" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Commits</TabsTrigger>
@@ -621,13 +640,13 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
 
         {/* Overview */}
         <TabsContent value="overview">
-          {loading ? (
-            <Shimmer />
-          ) : !overview ? (
-            <p className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-8 text-center text-sm text-muted-foreground">
+          {loading && <Shimmer />}
+          {!loading && !overview && (
+            <p className="rounded-xl border border-foreground/10 bg-foreground/3 p-8 text-center text-sm text-muted-foreground">
               Couldn&apos;t load repository details. Try syncing.
             </p>
-          ) : (
+          )}
+          {!loading && overview && (
             <div className="space-y-5">
               {repo.id && <AiSummaryCard repositoryId={repo.id} />}
               {overview.description && <p className="text-sm leading-6 text-foreground/80">{overview.description}</p>}
@@ -639,15 +658,15 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
                 <StatPill icon={<Eye className="size-5" />} label="Watchers" value={overview.watchers} href={`${overview.htmlUrl}/watchers`} />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4">
+                <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
                   <p className="text-xs text-muted-foreground">Language</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{overview.language ?? "—"}</p>
                 </div>
-                <div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4">
+                <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
                   <p className="text-xs text-muted-foreground">Default branch</p>
                   <p className="mt-1 font-mono text-sm font-medium text-foreground">{overview.defaultBranch}</p>
                 </div>
-                <div className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4">
+                <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
                   <p className="text-xs text-muted-foreground">Last push</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{timeAgo(overview.pushedAt)}</p>
                 </div>
@@ -658,13 +677,13 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
 
         {/* Pull Requests */}
         <TabsContent value="prs">
-          {prsQuery.isLoading || loading ? (
-            <Shimmer />
-          ) : prs.length === 0 ? (
-            <p className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-8 text-center text-sm text-muted-foreground">
+          {(prsQuery.isLoading || loading) && <Shimmer />}
+          {!(prsQuery.isLoading || loading) && prs.length === 0 && (
+            <p className="rounded-xl border border-foreground/10 bg-foreground/3 p-8 text-center text-sm text-muted-foreground">
               No pull requests yet. Open a PR (use a <span className="font-mono text-muted-foreground">feature/&#123;id&#125;</span> branch to trigger AI review).
             </p>
-          ) : (
+          )}
+          {!(prsQuery.isLoading || loading) && prs.length > 0 && (
             <div className="divide-y divide-foreground/5 overflow-hidden rounded-xl border border-foreground/10">
               {prs.map((pr) => (
                 <PrRow key={pr.id} pr={pr} features={features} onChanged={refreshPrs} />
@@ -675,11 +694,11 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
 
         {/* Commits */}
         <TabsContent value="commits">
-          {loading ? (
-            <Shimmer />
-          ) : commits.length === 0 ? (
-            <p className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-8 text-center text-sm text-muted-foreground">No commits found.</p>
-          ) : (
+          {loading && <Shimmer />}
+          {!loading && commits.length === 0 && (
+            <p className="rounded-xl border border-foreground/10 bg-foreground/3 p-8 text-center text-sm text-muted-foreground">No commits found.</p>
+          )}
+          {!loading && commits.length > 0 && (
             <div className="divide-y divide-foreground/5 overflow-hidden rounded-xl border border-foreground/10">
               {commits.map((c) => (
                 <div key={c.sha} className="flex items-center gap-3 px-5 py-3.5">
@@ -709,14 +728,14 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
 
         {/* Contributors */}
         <TabsContent value="contributors">
-          {loading ? (
-            <Shimmer />
-          ) : contributors.length === 0 ? (
-            <p className="rounded-xl border border-foreground/10 bg-foreground/[0.03] p-8 text-center text-sm text-muted-foreground">
+          {loading && <Shimmer />}
+          {!loading && contributors.length === 0 && (
+            <p className="rounded-xl border border-foreground/10 bg-foreground/3 p-8 text-center text-sm text-muted-foreground">
               <Users className="mx-auto mb-2 size-5 text-muted-foreground" />
               No contributors found.
             </p>
-          ) : (
+          )}
+          {!loading && contributors.length > 0 && (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {contributors.map((c) => (
                 <a
@@ -724,7 +743,7 @@ export function GithubRepoDashboard({ repo, onBack }: { repo: ConnectedRepo; onB
                   href={c.htmlUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/[0.03] px-4 py-3 transition hover:border-primary/30 hover:bg-foreground/[0.06]"
+                  className="flex items-center gap-3 rounded-xl border border-foreground/10 bg-foreground/3 px-4 py-3 transition hover:border-primary/30 hover:bg-foreground/6"
                 >
                   {c.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element

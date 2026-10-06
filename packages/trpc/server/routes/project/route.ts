@@ -54,7 +54,7 @@ export const projectRouter = router({
       return project;
     }),
 
-  list: orgProcedure.query(async ({ ctx }) =>
+  list: orgProcedure.query(({ ctx }) =>
     ctx.db
       .select()
       .from(projects)

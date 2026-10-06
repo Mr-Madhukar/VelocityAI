@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Bell, CheckCircle2, FileText, Github, OctagonAlert } from "lucide-react";
+import { ArrowRight, Bell, CheckCircle2, FileText, OctagonAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 
 import {
   DropdownMenu,
@@ -97,7 +98,8 @@ export function NotificationsMenu() {
         out.push({ id: `${f.id}-blocked`, featureId: f.id, title: f.title, message: "Blocker raised", icon: OctagonAlert, tone: "destructive", at });
       }
     }
-    return out.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 8);
+    out.sort((a, b) => b.at.getTime() - a.at.getTime());
+    return out.slice(0, 8);
   }, [features]);
 
   // Only surface unread (new) events — anything already seen is hidden.
@@ -123,20 +125,33 @@ export function NotificationsMenu() {
     });
   }
 
+function renderNotificationBadge(eventCount: number, showConnectRepo: boolean) {
+  if (eventCount > 0) {
+    return (
+      <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center bg-primary px-1 font-mono text-[9px] font-medium text-primary-foreground">
+        {eventCount}
+      </span>
+    );
+  }
+  if (showConnectRepo) {
+    return <span className="absolute -right-1 -top-1 size-2 rounded-full bg-primary" />;
+  }
+  return null;
+}
+
+function renderEmptyActivity(showConnectRepo: boolean) {
+  if (showConnectRepo) return null;
+  return <p className="px-3 py-8 text-center text-sm text-muted-foreground">You&apos;re all caught up.</p>;
+}
+
   return (
     <DropdownMenu onOpenChange={(open) => { if (!open) markAllRead(); }}>
       <DropdownMenuTrigger
         aria-label="Notifications"
-        className="relative grid size-9 shrink-0 place-items-center border border-border bg-foreground/[0.03] text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground focus:outline-none"
+        className="relative grid size-9 shrink-0 place-items-center border border-border bg-foreground/3 text-muted-foreground transition-colors hover:bg-foreground/6 hover:text-foreground focus:outline-none"
       >
         <Bell className="size-4" />
-        {events.length > 0 ? (
-          <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center bg-primary px-1 font-mono text-[9px] font-medium text-primary-foreground">
-            {events.length}
-          </span>
-        ) : showConnectRepo ? (
-          <span className="absolute -right-1 -top-1 size-2 rounded-full bg-primary" />
-        ) : null}
+        {renderNotificationBadge(events.length, showConnectRepo)}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-80 border-border bg-popover p-0">
@@ -150,10 +165,10 @@ export function NotificationsMenu() {
         {showConnectRepo ? (
           <Link
             href="/github"
-            className="flex items-start gap-3 border-b border-border bg-primary/[0.04] px-3 py-3 transition-colors hover:bg-primary/[0.07]"
+            className="flex items-start gap-3 border-b border-border bg-primary/4 px-3 py-3 transition-colors hover:bg-primary/7"
           >
             <span className="mt-0.5 grid size-7 shrink-0 place-items-center border border-primary/30 bg-background text-primary">
-              <Github className="size-3.5" />
+              <SiGithub className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5">
@@ -169,9 +184,7 @@ export function NotificationsMenu() {
         ) : null}
 
         {events.length === 0 ? (
-          showConnectRepo ? null : (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">You&apos;re all caught up.</p>
-          )
+          renderEmptyActivity(showConnectRepo)
         ) : (
           <ul className="max-h-80 overflow-y-auto">
             {events.map((e) => {
@@ -180,9 +193,9 @@ export function NotificationsMenu() {
                 <li key={e.id}>
                   <Link
                     href={`/features/${e.featureId}`}
-                    className="flex items-start gap-3 border-b border-border px-3 py-3 transition-colors last:border-b-0 hover:bg-foreground/[0.04]"
+                    className="flex items-start gap-3 border-b border-border px-3 py-3 transition-colors last:border-b-0 hover:bg-foreground/4"
                   >
-                    <span className={cn("mt-0.5 grid size-7 shrink-0 place-items-center border border-border bg-foreground/[0.03]", toneText[e.tone])}>
+                    <span className={cn("mt-0.5 grid size-7 shrink-0 place-items-center border border-border bg-foreground/3", toneText[e.tone])}>
                       <Icon className="size-3.5" />
                     </span>
                     <span className="min-w-0 flex-1">

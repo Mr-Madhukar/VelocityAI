@@ -35,7 +35,7 @@ export function SmoothScroll() {
     // scroll; mirror that by pausing Lenis so the modal's own scroll container
     // takes over, and resume once every modal has closed.
     const syncLenisWithScrollLock = () => {
-      if (document.body.hasAttribute("data-scroll-locked")) {
+      if (document.body.dataset.scrollLocked !== undefined) {
         lenis.stop();
       } else {
         lenis.start();

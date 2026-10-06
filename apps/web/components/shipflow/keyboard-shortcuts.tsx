@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Keyboard } from "lucide-react";
 
@@ -35,10 +35,10 @@ export function useKeyboardShortcuts() {
 export function ShortcutKeys({
   shortcut,
   className,
-}: {
+}: Readonly<{
   shortcut: string;
   className?: string;
-}) {
+}>) {
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)} aria-hidden>
       {shortcutTokens(shortcut).map((token, i) => (
@@ -62,7 +62,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
   );
 }
 
-export function KeyboardShortcutsProvider({ children }: { children: React.ReactNode }) {
+export function KeyboardShortcutsProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -100,8 +100,10 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
     return () => window.removeEventListener("keydown", onKey);
   }, [router]);
 
+  const contextValue = useMemo(() => ({ open: openHelp }), [openHelp]);
+
   return (
-    <KeyboardShortcutsContext.Provider value={{ open: openHelp }}>
+    <KeyboardShortcutsContext.Provider value={contextValue}>
       {children}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -130,10 +132,10 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
 function ShortcutSection({
   heading,
   rows,
-}: {
+}: Readonly<{
   heading: string;
   rows: { label: string; shortcut: string }[];
-}) {
+}>) {
   return (
     <div>
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
@@ -161,7 +163,7 @@ export function KeyboardShortcutsButton() {
     <button
       type="button"
       onClick={open}
-      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground"
+      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-foreground/6 hover:text-foreground"
     >
       <Keyboard className="size-4 shrink-0" />
       <span className="flex-1 text-left">Keyboard shortcuts</span>

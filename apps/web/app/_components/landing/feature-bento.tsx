@@ -450,8 +450,18 @@ const COLUMNS_SM: string[][] = [
   ["prd.gen", "prompt.copy", "npm.VelocityAI", "gh.sync", "jobs.durable"],
 ];
 
-function Card({ card, delay }: Readonly<{ card: CardDef; delay: number }>) {
+function renderCardIcon(card: CardDef) {
+  if (card.brand) {
+    return <SiGithub className="size-4 text-foreground" />;
+  }
   const Icon = card.icon;
+  if (Icon) {
+    return <Icon className="size-4" />;
+  }
+  return null;
+}
+
+function Card({ card, delay }: Readonly<{ card: CardDef; delay: number }>) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -462,7 +472,7 @@ function Card({ card, delay }: Readonly<{ card: CardDef; delay: number }>) {
     >
       <div className="flex items-center gap-3">
         <span className="grid size-9 shrink-0 place-items-center border border-border bg-foreground/4 text-primary">
-          {card.brand ? <SiGithub className="size-4 text-foreground" /> : Icon ? <Icon className="size-4" /> : null}
+          {renderCardIcon(card)}
         </span>
         <p className="font-display text-[15px] font-medium">{card.title}</p>
       </div>
@@ -476,7 +486,7 @@ function Wall({ columns, className }: Readonly<{ columns: string[][]; className:
   return (
     <div className={cn("mt-10 gap-4", className)}>
       {columns.map((col, ci) => (
-        <div key={ci} className="flex min-w-0 flex-col gap-4">
+        <div key={col.join("-")} className="flex min-w-0 flex-col gap-4">
           {col.map((tag) => {
             const card = CARD_BY_TAG.get(tag);
             return card ? <Card key={tag} card={card} delay={ci * 0.06} /> : null;

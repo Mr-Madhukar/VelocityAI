@@ -74,31 +74,21 @@ export function rememberModel(keyId: string, model: string) {
  * NOT a server action (this module has no "use server") — the returned deps
  * carry the decrypted API key and must never be reachable from the client.
  */
-export async function prepareAgentRun(
-  input: AgentRunRequest,
-): Promise<{ ok: true; deps: AgentRunDeps } | ActionError> {
-  const auth = await requireOrg();
-  if (!auth.ok) return { ok: false, error: auth.error };
-  if (!isProvider(input.provider)) return { ok: false, error: "Unknown provider." };
-  if (!input.prompt.trim()) return { ok: false, error: "Describe what you want the agent to build." };
-
-  // The agent always codes from an approved PRD — a feature is required.
-  if (!input.featureId) {
-    return {
-      ok: false,
-      error:
-        "The agent codes from an approved PRD, so please pick a feature first. If the feature doesn't have a PRD yet, open it and let the AI write one from the Clarify tab — then come back here.",
-    };
-  }
-
-  // The repo must belong to the caller's org.
+async function loadRepoAndKey(
+  repositoryId: string,
+  provider: AgentProvider,
+  organizationId: string,
+): Promise<
+  | { ok: true; repo: typeof repositories.$inferSelect; keyRow: typeof agentProviderKeys.$inferSelect }
+  | ActionError
+> {
   const [repo] = await db
     .select()
     .from(repositories)
     .where(
       and(
-        eq(repositories.id, input.repositoryId),
-        eq(repositories.organizationId, auth.organizationId),
+        eq(repositories.id, repositoryId),
+        eq(repositories.organizationId, organizationId),
       ),
     );
   if (!repo) return { ok: false, error: "Repository not found in this organization." };
@@ -108,43 +98,42 @@ export async function prepareAgentRun(
     .from(agentProviderKeys)
     .where(
       and(
-        eq(agentProviderKeys.organizationId, auth.organizationId),
-        eq(agentProviderKeys.provider, input.provider),
+        eq(agentProviderKeys.organizationId, organizationId),
+        eq(agentProviderKeys.provider, provider),
       ),
     );
   if (!keyRow) {
     return { ok: false, error: "No API key saved for this provider yet. Add one in Agent settings." };
   }
 
-  // Load the stored repo context once. Build it only if this repo was never
-  // indexed (older connections); normally it already exists from connect time.
-  let context: RepoContext | null = await getRepoContext(input.repositoryId);
-  if (!context) {
-    try {
-      context = await buildRepoContext(input.repositoryId);
-    } catch {
-      return {
-        ok: false,
-        error:
-          "Couldn't analyze the repository. Open its GitHub dashboard and generate the AI summary, then retry.",
-      };
-    }
-  }
+  return { ok: true, repo, keyRow };
+}
 
-  // PRD + tasks give the agent the "code from the PRD, task-wise" grounding.
-  // The PRD must exist AND be approved — the agent never codes from guesswork.
+async function loadFeaturePrdAndTasks(
+  featureId: string,
+  organizationId: string,
+  taskIds?: string[] | null,
+): Promise<
+  | {
+      ok: true;
+      feature: { id: string; branchName: string | null };
+      prd: { problem: string; acceptanceCriteria: string[] };
+      tasks: AgentTaskContext[];
+    }
+  | ActionError
+> {
   const [feature] = await db
     .select({ id: featureRequests.id, branchName: featureRequests.branchName })
     .from(featureRequests)
     .where(
       and(
-        eq(featureRequests.id, input.featureId),
-        eq(featureRequests.organizationId, auth.organizationId),
+        eq(featureRequests.id, featureId),
+        eq(featureRequests.organizationId, organizationId),
       ),
     );
   if (!feature) return { ok: false, error: "Feature not found in this organization." };
 
-  const [prdRow] = await db.select().from(prds).where(eq(prds.featureId, input.featureId));
+  const [prdRow] = await db.select().from(prds).where(eq(prds.featureId, featureId));
   if (!prdRow) {
     return {
       ok: false,
@@ -170,9 +159,9 @@ export async function prepareAgentRun(
     prd = { problem: prdRow.problem, acceptanceCriteria: [] };
   }
 
-  const allTasks = await db.select().from(tasks).where(eq(tasks.featureId, input.featureId));
-  const selected = input.taskIds?.length
-    ? allTasks.filter((t) => input.taskIds!.includes(t.id))
+  const allTasks = await db.select().from(tasks).where(eq(tasks.featureId, featureId));
+  const selected = taskIds?.length
+    ? allTasks.filter((t) => taskIds.includes(t.id))
     : allTasks;
   const taskContext: AgentTaskContext[] = selected.map((t) => ({
     title: t.title,
@@ -181,27 +170,69 @@ export async function prepareAgentRun(
     status: t.status,
   }));
 
-  // If this feature already has a LINKED open PR (auto-linked by branch or
-  // linked manually — possibly on a non-canonical branch), read THAT PR's
-  // branch: the agent must see the work already on the PR and build on top of
-  // it, and the later commit lands on the same PR. Only when no PR is linked
-  // do we fall back to the feature's canonical feature/<slug> branch.
-  // Best-effort: no branch yet (first run) or a read failure → no prior context.
-  let priorChanges: Array<{ path: string; content: string }> | null = null;
-  let linkedPr: LinkedOpenPr | null = null;
-  if (repo.installationId) {
-    linkedPr = await getLinkedOpenPr(feature.id, repo.fullName);
-    const branchName =
-      linkedPr?.headBranch ?? (feature.branchName ? `feature/${feature.branchName}` : null);
-    if (branchName) {
-      priorChanges = await getFeatureBranchFiles({
-        installationId: repo.installationId,
-        fullName: repo.fullName,
-        defaultBranch: linkedPr?.baseBranch ?? repo.defaultBranch,
-        branchName,
-      });
+  return { ok: true, feature, prd, tasks: taskContext };
+}
+
+async function loadPriorBranchChanges(
+  feature: { id: string; branchName: string | null },
+  repo: typeof repositories.$inferSelect,
+): Promise<{
+  priorChanges: Array<{ path: string; content: string }> | null;
+  linkedPr: LinkedOpenPr | null;
+}> {
+  if (!repo.installationId) return { priorChanges: null, linkedPr: null };
+  const linkedPr = await getLinkedOpenPr(feature.id, repo.fullName);
+  const branchName =
+    linkedPr?.headBranch ?? (feature.branchName ? `feature/${feature.branchName}` : null);
+  if (!branchName) return { priorChanges: null, linkedPr };
+
+  const priorChanges = await getFeatureBranchFiles({
+    installationId: repo.installationId,
+    fullName: repo.fullName,
+    defaultBranch: linkedPr?.baseBranch ?? repo.defaultBranch,
+    branchName,
+  });
+  return { priorChanges, linkedPr };
+}
+
+export async function prepareAgentRun(
+  input: AgentRunRequest,
+): Promise<{ ok: true; deps: AgentRunDeps } | ActionError> {
+  const auth = await requireOrg();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  if (!isProvider(input.provider)) return { ok: false, error: "Unknown provider." };
+  if (!input.prompt.trim()) return { ok: false, error: "Describe what you want the agent to build." };
+
+  if (!input.featureId) {
+    return {
+      ok: false,
+      error:
+        "The agent codes from an approved PRD, so please pick a feature first. If the feature doesn't have a PRD yet, open it and let the AI write one from the Clarify tab — then come back here.",
+    };
+  }
+
+  const repoRes = await loadRepoAndKey(input.repositoryId, input.provider, auth.organizationId);
+  if (!repoRes.ok) return repoRes;
+  const { repo, keyRow } = repoRes;
+
+  let context: RepoContext | null = await getRepoContext(input.repositoryId);
+  if (!context) {
+    try {
+      context = await buildRepoContext(input.repositoryId);
+    } catch {
+      return {
+        ok: false,
+        error:
+          "Couldn't analyze the repository. Open its GitHub dashboard and generate the AI summary, then retry.",
+      };
     }
   }
+
+  const featureRes = await loadFeaturePrdAndTasks(input.featureId, auth.organizationId, input.taskIds);
+  if (!featureRes.ok) return featureRes;
+  const { feature, prd, tasks: taskContext } = featureRes;
+
+  const { priorChanges, linkedPr } = await loadPriorBranchChanges(feature, repo);
 
   return {
     ok: true,

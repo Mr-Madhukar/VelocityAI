@@ -202,6 +202,6 @@ function PrdPdfDocument({ data }: { data: PrdDocumentData }) {
   );
 }
 
-export async function renderPrdPdf(data: PrdDocumentData): Promise<Buffer> {
+export function renderPrdPdf(data: PrdDocumentData): Promise<Buffer> {
   return renderToBuffer(<PrdPdfDocument data={data} />);
 }

@@ -39,7 +39,7 @@ export const githubRouter = router({
 
   repositories: orgProcedure
     .input(z.object({ projectId: z.string().optional() }).optional())
-    .query(async ({ ctx, input }) => {
+    .query(({ ctx, input }) => {
       const conditions = [eq(repositories.organizationId, ctx.org.id)];
 
       if (input?.projectId) {
@@ -54,7 +54,7 @@ export const githubRouter = router({
 
   listRepos: orgProcedure
     .input(z.object({ projectId: z.string() }))
-    .query(async ({ ctx, input }) =>
+    .query(({ ctx, input }) =>
       ctx.db
         .select()
         .from(repositories)
@@ -134,7 +134,7 @@ export const githubRouter = router({
   // user can attach to a feature. Scoped to a project's repos when given.
   listLinkablePullRequests: orgProcedure
     .input(z.object({ projectId: z.string().optional() }).optional())
-    .query(async ({ ctx, input }) => {
+    .query(({ ctx, input }) => {
       const conditions = [
         eq(repositories.organizationId, ctx.org.id),
         isNull(pullRequests.featureId),

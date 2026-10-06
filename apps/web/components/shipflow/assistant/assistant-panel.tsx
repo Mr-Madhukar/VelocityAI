@@ -246,7 +246,9 @@ export function AssistantPanel({
   useEffect(() => {
     if (!repoId) return;
     setStatus(null);
-    getRepoContextStatusAction(repoId).then(setStatus);
+    void getRepoContextStatusAction(repoId)
+      .then(setStatus)
+      .catch(() => {});
   }, [repoId]);
 
   function indexRepo() {

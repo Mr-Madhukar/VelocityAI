@@ -22,7 +22,7 @@ export type SendInviteEmailInput = {
   expiresAt: Date;
 };
 
-export async function sendInviteEmail(input: SendInviteEmailInput) {
+export function sendInviteEmail(input: SendInviteEmailInput) {
   const acceptUrl = `${APP_URL}/invite?token=${input.invitationId}`;
   const expiryDate = input.expiresAt.toLocaleDateString("en-US", {
     month: "long",
@@ -148,7 +148,7 @@ export type SendVerificationCodeEmailInput = {
 
 // 6-digit email ownership check. Square-cornered layout by design — all edges
 // are sharp (border-radius: 0) to match the product's document aesthetic.
-export async function sendVerificationCodeEmail(input: SendVerificationCodeEmailInput) {
+export function sendVerificationCodeEmail(input: SendVerificationCodeEmailInput) {
   const firstName = input.name?.trim().split(/\s+/)[0] ?? null;
   const digits = input.code
     .split("")
