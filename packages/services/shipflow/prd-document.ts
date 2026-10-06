@@ -27,13 +27,21 @@ export type PrdDocumentData = {
   generatedAt?: string | Date;
 };
 
+function trimHyphens(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value.codePointAt(start) === 45) {
+    start++;
+  }
+  while (end > start && value.codePointAt(end - 1) === 45) {
+    end--;
+  }
+  return value.slice(start, end);
+}
+
 // URL/file-safe slug used for the downloaded/attached PDF filename.
 export function prdDocumentFilename(title: string): string {
-  const slug =
-    title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "product-requirements";
+  const normalized = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const slug = trimHyphens(trimHyphens(normalized).slice(0, 60)) || "product-requirements";
   return `PRD-${slug}.pdf`;
 }

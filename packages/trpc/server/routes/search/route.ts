@@ -173,7 +173,7 @@ export const searchRouter = router({
           type: "feature",
           id: f.id,
           title: f.title,
-          subtitle: `Feature · ${f.status.replace(/_/g, " ")}`,
+          subtitle: `Feature · ${f.status.replaceAll("_", " ")}`,
           href: `/features/${f.id}`,
         })),
         ...taskRows.map((t): SearchResult => ({
@@ -201,7 +201,7 @@ export const searchRouter = router({
           type: "review",
           id: r.id,
           title: r.featureTitle,
-          subtitle: r.verdict ? `Review · ${r.verdict.replace(/_/g, " ")}` : "Review",
+          subtitle: r.verdict ? `Review · ${r.verdict.replaceAll("_", " ")}` : "Review",
           href: `/features/${r.featureId}?tab=review-history`,
         })),
       ];

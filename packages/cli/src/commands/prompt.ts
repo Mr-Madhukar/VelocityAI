@@ -1,9 +1,8 @@
 import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
 
 import type { Command } from "commander";
 
-import { CliError, dim, info, printJson, success } from "../output";
+import { CliError, dim, info, printJson, safeResolvePath, success } from "../output";
 import { ensureOrg, requireToken, type Runtime } from "../runtime";
 
 async function prep(getRuntime: () => Runtime): Promise<Runtime> {
@@ -21,7 +20,7 @@ function deliver(
   output?: string,
 ): void {
   if (output) {
-    const file = resolve(output);
+    const file = safeResolvePath(output);
     writeFileSync(file, prompt.endsWith("\n") ? prompt : `${prompt}\n`);
     if (rt.json) return printJson({ ...meta, file });
     success(`Saved prompt to ${file}.`);

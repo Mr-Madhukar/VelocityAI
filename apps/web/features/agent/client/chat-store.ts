@@ -72,7 +72,10 @@ const STORAGE_KEY = "VelocityAI.agent.chats.v1";
 const ACTIVE_KEY = "VelocityAI.agent.activerun.v1";
 const EMPTY: AgentChatState = { sessions: [], activeId: null, run: null };
 
-const uid = () => Math.random().toString(36).slice(2);
+const uid = () =>
+  typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : Date.now().toString(36);
 
 let state: AgentChatState | null = null;
 let abortController: AbortController | null = null;

@@ -473,7 +473,7 @@ function GithubAppCardBody({
             )}
           </div>
         </div>
-        {installationId && (
+        {Boolean(installationId) && (
           <button
             type="button"
             onClick={() => onOpenPopup(getManageUrl(installationId))}

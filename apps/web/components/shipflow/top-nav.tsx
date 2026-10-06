@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Github, LogOut, Menu, Plus, Search, Settings, User as UserIcon } from "lucide-react";
+import { LogOut, Menu, Plus, Search, Settings, User as UserIcon } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 
 import {
   Breadcrumb,
@@ -55,7 +56,7 @@ const AVATAR_COLORS = [
 function avatarColor(key: string) {
   let hash = 0;
   for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    hash = (hash * 31 + (key.codePointAt(i) ?? 0)) >>> 0;
   }
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
@@ -111,9 +112,9 @@ function UserMenu() {
         {needsRepo ? (
           <>
             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/github" className="flex-col !items-start gap-1 py-2">
+              <Link href="/github" className="flex-col items-start! gap-1 py-2">
                 <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Github className="size-4 text-primary" /> Connect a repository
+                  <SiGithub className="size-4 text-primary" /> Connect a repository
                 </span>
                 <span className="pl-6 text-xs leading-5 text-muted-foreground">
                   Better tech-stack detection, prompt generation &amp; codebase context.
@@ -145,7 +146,7 @@ function UserMenu() {
   );
 }
 
-export function TopNav({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
+export function TopNav({ onOpenMobileNav }: Readonly<{ onOpenMobileNav: () => void }>) {
   const pathname = usePathname() ?? "";
   const { open } = useCommandPalette();
   const label = routeLabel(pathname);
@@ -158,7 +159,7 @@ export function TopNav({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             type="button"
             onClick={onOpenMobileNav}
             aria-label="Open menu"
-            className="grid size-9 shrink-0 place-items-center border border-border bg-foreground/[0.03] text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+            className="grid size-9 shrink-0 place-items-center border border-border bg-foreground/3 text-muted-foreground transition-colors hover:text-foreground lg:hidden"
           >
             <Menu className="size-4" />
           </button>
@@ -188,11 +189,11 @@ export function TopNav({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           <button
             type="button"
             onClick={open}
-            className="hidden h-9 items-center gap-2 border border-border bg-foreground/[0.03] px-2.5 text-muted-foreground transition-colors hover:bg-foreground/[0.06] hover:text-foreground sm:flex"
+            className="hidden h-9 items-center gap-2 border border-border bg-foreground/3 px-2.5 text-muted-foreground transition-colors hover:bg-foreground/6 hover:text-foreground sm:flex"
           >
             <Search className="size-4" />
             <span className="text-sm">Search…</span>
-            <kbd className="ml-3 border border-border bg-foreground/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            <kbd className="ml-3 border border-border bg-foreground/4 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
               ⌘K
             </kbd>
           </button>
@@ -200,7 +201,7 @@ export function TopNav({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             type="button"
             onClick={open}
             aria-label="Search"
-            className="grid size-9 place-items-center border border-border bg-foreground/[0.03] text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+            className="grid size-9 place-items-center border border-border bg-foreground/3 text-muted-foreground transition-colors hover:text-foreground sm:hidden"
           >
             <Search className="size-4" />
           </button>

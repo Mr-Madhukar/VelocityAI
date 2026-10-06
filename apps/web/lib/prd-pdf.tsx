@@ -141,7 +141,7 @@ function PrdPdfDocument({ data }: { data: PrdDocumentData }) {
   const approved = Boolean(data.approvedAt);
   const meta: { label: string; value: string }[] = [
     { label: "Version", value: `v${data.version}` },
-    { label: "Status", value: approved ? "Approved" : data.status.replace(/_/g, " ") },
+    { label: "Status", value: approved ? "Approved" : data.status.replaceAll("_", " ") },
     { label: "Priority", value: data.priority },
     { label: "Est. effort", value: data.estimatedTotalHours ? `~${data.estimatedTotalHours}h` : "—" },
     { label: "Target date", value: fmtDate(data.targetDeadline) },

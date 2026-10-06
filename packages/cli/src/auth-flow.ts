@@ -16,13 +16,28 @@ export interface DeviceCodeResponse {
   interval: number;
 }
 
-function authBase(apiUrl: string): string {
-  return `${apiUrl.replace(/\/$/, "")}/api/auth`;
+function validateApiUrl(apiUrl: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(apiUrl);
+  } catch {
+    throw new CliError(`Invalid API URL: "${apiUrl}".`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new CliError(`Invalid API URL protocol "${parsed.protocol}". Only HTTP and HTTPS are allowed.`);
+  }
+  return parsed;
+}
+
+function authEndpoint(apiUrl: string, path: string): string {
+  const parsed = validateApiUrl(apiUrl);
+  const base = `${parsed.origin}${parsed.pathname.replace(/\/$/, "")}/api/auth/`;
+  return new URL(path.replace(/^\/+/, ""), base).toString();
 }
 
 /** Step 1 — ask the server for a device + user code (RFC 8628). */
 export async function requestDeviceCode(apiUrl: string): Promise<DeviceCodeResponse> {
-  const res = await fetch(`${authBase(apiUrl)}/device/code`, {
+  const res = await fetch(authEndpoint(apiUrl, "device/code"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ client_id: CLI_CLIENT_ID, scope: "cli" }),
@@ -52,7 +67,7 @@ export async function pollForToken(
   while (Date.now() < deadline) {
     await sleep(interval * 1000);
 
-    const res = await fetch(`${authBase(apiUrl)}/device/token`, {
+    const res = await fetch(authEndpoint(apiUrl, "device/token"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -99,7 +114,7 @@ export async function setActiveOrg(
   token: string,
   organizationId: string,
 ): Promise<void> {
-  const res = await fetch(`${authBase(apiUrl)}/organization/set-active`, {
+  const res = await fetch(authEndpoint(apiUrl, "organization/set-active"), {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({ organizationId }),
@@ -116,7 +131,7 @@ export interface SessionInfo {
 
 /** Fetch the signed-in user for `whoami`. Returns null if the token is invalid. */
 export async function fetchSession(apiUrl: string, token: string): Promise<SessionInfo | null> {
-  const res = await fetch(`${authBase(apiUrl)}/get-session`, {
+  const res = await fetch(authEndpoint(apiUrl, "get-session"), {
     headers: { authorization: `Bearer ${token}` },
   });
   if (!res.ok) return null;
@@ -125,16 +140,35 @@ export async function fetchSession(apiUrl: string, token: string): Promise<Sessi
 
 /** Best-effort open of the system browser. Never throws — prints the URL instead. */
 export function openBrowser(url: string): void {
-  const platform = process.platform;
-  const [cmd, args] =
-    platform === "win32"
-      ? ["cmd", ["/c", "start", "", url]]
-      : platform === "darwin"
-        ? ["open", [url]]
-        : ["xdg-open", [url]];
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return;
+  }
+
+  const safeUrl = parsed.toString();
+  if (/[^a-zA-Z0-9-._~:/?#[\]@!$&'()*+,;=%]/.test(safeUrl)) {
+    return;
+  }
+
+  let cmd = "xdg-open";
+  let args = [safeUrl];
+
+  if (process.platform === "win32") {
+    cmd = "cmd.exe";
+    args = ["/c", "start", '""', safeUrl.replaceAll("&", "^&")];
+  } else if (process.platform === "darwin") {
+    cmd = "open";
+    args = ["--", safeUrl];
+  }
 
   try {
-    const child = spawn(cmd, args as string[], { stdio: "ignore", detached: true });
+    const child = spawn(cmd, args, { stdio: "ignore", detached: true, shell: false });
     child.on("error", () => {});
     child.unref();
   } catch {

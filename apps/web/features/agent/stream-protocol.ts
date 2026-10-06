@@ -11,8 +11,8 @@
  *
  * A clean end with neither sentinel means the run finished (`done`).
  */
-export const ERROR_SENTINEL = String.fromCharCode(0);
-export const PAUSE_SENTINEL = String.fromCharCode(1);
+export const ERROR_SENTINEL = String.fromCodePoint(0);
+export const PAUSE_SENTINEL = String.fromCodePoint(1);
 
 /** Header carrying the run id on the initial stream response. */
 export const RUN_ID_HEADER = "X-Agent-Run-Id";

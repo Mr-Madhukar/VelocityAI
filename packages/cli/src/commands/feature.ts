@@ -59,11 +59,12 @@ export function registerFeatureCommands(program: Command, getRuntime: () => Runt
         if (projects.length === 0) {
           throw new CliError("This organization has no projects yet. Create one in the web app first.");
         }
-        const project = opts.project
-          ? projects.find((p) => p.slug === opts.project || p.id === opts.project)
-          : projects.length === 1
-            ? projects[0]
-            : undefined;
+        let project: (typeof projects)[number] | undefined;
+        if (opts.project) {
+          project = projects.find((p) => p.slug === opts.project || p.id === opts.project);
+        } else if (projects.length === 1) {
+          project = projects[0];
+        }
         if (!project) {
           throw new CliError(
             opts.project
@@ -99,11 +100,16 @@ export function registerFeatureCommands(program: Command, getRuntime: () => Runt
       info(`  id:       ${f.id}`);
       info(`  priority: ${f.priority}`);
       info(`  branch:   ${f.branchName}`);
-      info(`  PRD:      ${f.prd ? `v${f.prd.version}${f.prd.approvedAt ? " (approved)" : ""}` : "— not generated"}`);
+      let prdSummary = "— not generated";
+      if (f.prd) {
+        const approvedSuffix = f.prd.approvedAt ? " (approved)" : "";
+        prdSummary = `v${f.prd.version}${approvedSuffix}`;
+      }
+      info(`  PRD:      ${prdSummary}`);
       info(`  tasks:    ${f.tasks.length}`);
       info(`  reviews:  ${f.reviewCycles.length}`);
       if (f.messages.length > 0) {
-        const last = f.messages[f.messages.length - 1]!;
+        const last = f.messages.at(-1)!;
         dim(`\n  last clarification (${last.role}): ${last.content}`);
       }
     });
@@ -127,8 +133,18 @@ export function registerFeatureCommands(program: Command, getRuntime: () => Runt
     .command("open <featureId>")
     .description("Open a feature in the web app.")
     .action(async (featureId: string) => {
+      if (!/^[a-zA-Z0-9_-]+$/.test(featureId)) {
+        throw new CliError("Invalid feature ID format.");
+      }
       const rt = await prep(getRuntime);
-      const url = `${rt.apiUrl}/features/${featureId}`;
+      const parsedApiUrl = new URL(rt.apiUrl);
+      if (parsedApiUrl.protocol !== "http:" && parsedApiUrl.protocol !== "https:") {
+        throw new CliError(`Invalid API URL protocol: ${parsedApiUrl.protocol}`);
+      }
+      const url = new URL(
+        `features/${encodeURIComponent(featureId)}`,
+        `${parsedApiUrl.origin}${parsedApiUrl.pathname.replace(/\/$/, "")}/`,
+      ).toString();
       openBrowser(url);
       if (rt.json) return printJson({ url });
       info(url);

@@ -40,7 +40,7 @@ async function taskIdFingerprint(ctx: Context, featureId: string): Promise<strin
     .select({ id: tasks.id })
     .from(tasks)
     .where(eq(tasks.featureId, featureId));
-  return rows.map((r) => r.id).sort();
+  return rows.map((r) => r.id).sort((a, b) => a.localeCompare(b));
 }
 
 // Load the feature scoped to the caller's active org (also authorizes access).
@@ -113,7 +113,7 @@ async function buildResult(
     const storedFingerprint = safeParse<string[]>(row.taskFingerprint, []);
     stale =
       (prd ? row.prdVersion !== prd.version : false) ||
-      JSON.stringify(fingerprint) !== JSON.stringify([...storedFingerprint].sort());
+      JSON.stringify(fingerprint) !== JSON.stringify([...storedFingerprint].sort((a, b) => a.localeCompare(b)));
   }
 
   // Default stack candidates: the project's stored stack, and the connected

@@ -8,12 +8,12 @@ test("shortId returns the first 8 characters", () => {
 });
 
 test("stripAnsi removes SGR color sequences", () => {
-  const colored = `${String.fromCharCode(27)}[32mgreen${String.fromCharCode(27)}[39m`;
+  const colored = `${String.fromCodePoint(27)}[32mgreen${String.fromCodePoint(27)}[39m`;
   assert.equal(stripAnsi(colored), "green");
 });
 
 test("table aligns columns ignoring color codes", () => {
-  const green = `${String.fromCharCode(27)}[32mok${String.fromCharCode(27)}[39m`;
+  const green = `${String.fromCodePoint(27)}[32mok${String.fromCodePoint(27)}[39m`;
   const out = table(["A", "B"], [["longvalue", green], ["x", "y"]]);
   const lines = out.split("\n");
   // Header + two rows.

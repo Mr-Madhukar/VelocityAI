@@ -50,23 +50,38 @@ export function toReviewRequestedEvent(
   };
 }
 
+function trimHyphens(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value.codePointAt(start) === 45) {
+    start++;
+  }
+  while (end > start && value.codePointAt(end - 1) === 45) {
+    end--;
+  }
+  return value.slice(start, end);
+}
+
 /**
  * Turns an arbitrary string (a feature title or an AI suggestion) into a short,
  * readable, git-safe branch slug — lowercase, hyphen-separated, first few words
  * only, length-capped. Never returns an empty string.
  */
 export function slugifyBranchName(input: string): string {
-  const base = input
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  const base = trimHyphens(
+    input
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-"),
+  );
 
   const words = base.split("-").filter(Boolean).slice(0, 6);
   let slug = words.join("-");
-  if (slug.length > 40) slug = slug.slice(0, 40).replace(/-+$/g, "");
+  if (slug.length > 40) slug = trimHyphens(slug.slice(0, 40));
   return slug || "feature";
 }
+
+const FEATURE_BRANCH_RE = /^feature\/(.+)$/;
 
 /**
  * Extracts the slug-or-id portion of a `feature/<ref>` branch, or null when the
@@ -74,6 +89,6 @@ export function slugifyBranchName(input: string): string {
  * branch slugs first, then raw feature ids (back-compat).
  */
 export function featureBranchRef(branch: string): string | null {
-  const match = branch.match(/^feature\/(.+)$/);
+  const match = FEATURE_BRANCH_RE.exec(branch);
   return match?.[1]?.trim() || null;
 }

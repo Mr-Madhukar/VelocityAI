@@ -1,12 +1,12 @@
 import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename } from "node:path";
 
 import type { Command } from "commander";
 
-import { CliError, dim, info, printJson, success } from "../output";
+import { CliError, dim, info, printJson, safeResolvePath, success } from "../output";
 import { ensureOrg, requireToken, type Runtime } from "../runtime";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 async function prep(getRuntime: () => Runtime): Promise<Runtime> {
   const rt = getRuntime();
@@ -32,8 +32,10 @@ export function registerPrdCommands(program: Command, getRuntime: () => Runtime)
         return;
       }
       info(`# ${doc.problem}\n`);
-      info(`Goals:\n${doc.goals.map((g) => `  - ${g}`).join("\n")}`);
-      info(`\nAcceptance criteria:\n${doc.acceptanceCriteria.map((c) => `  - ${c}`).join("\n")}`);
+      const goalsList = doc.goals.map((g) => "  - " + g).join("\n");
+      info(`Goals:\n${goalsList}`);
+      const criteriaList = doc.acceptanceCriteria.map((c) => "  - " + c).join("\n");
+      info(`\nAcceptance criteria:\n${criteriaList}`);
     });
 
   prd
@@ -65,18 +67,32 @@ export function registerPrdCommands(program: Command, getRuntime: () => Runtime)
     .description("Download the PRD as a PDF.")
     .option("-o, --output <file>", "Where to save the PDF (defaults to the server's filename).")
     .action(async (featureId: string, opts: { output?: string }) => {
+      if (!/^[a-zA-Z0-9_-]+$/.test(featureId)) {
+        throw new CliError("Invalid feature ID format.");
+      }
       const rt = await prep(getRuntime);
       const token = requireToken(rt);
 
-      const res = await fetch(`${rt.apiUrl}/api/features/${featureId}/prd-pdf`, {
+      const parsedApiUrl = new URL(rt.apiUrl);
+      if (parsedApiUrl.protocol !== "http:" && parsedApiUrl.protocol !== "https:") {
+        throw new CliError(`Invalid API URL protocol: ${parsedApiUrl.protocol}`);
+      }
+      const pdfUrl = new URL(
+        `api/features/${encodeURIComponent(featureId)}/prd-pdf`,
+        `${parsedApiUrl.origin}${parsedApiUrl.pathname.replace(/\/$/, "")}/`,
+      ).toString();
+
+      const res = await fetch(pdfUrl, {
         headers: { authorization: `Bearer ${token}` },
       });
       if (res.status === 404) throw new CliError("No PRD (or feature) found with that id.");
       if (!res.ok) throw new CliError(`Download failed (HTTP ${res.status}).`);
 
       const disposition = res.headers.get("content-disposition") ?? "";
-      const serverName = disposition.match(/filename="?([^";]+)"?/)?.[1];
-      const file = resolve(opts.output ?? serverName ?? `PRD-${featureId.slice(0, 8)}.pdf`);
+      const filenameMatch = (/filename="?([^";]+)"?/).exec(disposition);
+      const rawServerName = filenameMatch?.[1];
+      const safeServerName = rawServerName ? basename(rawServerName) : undefined;
+      const file = safeResolvePath(opts.output ?? safeServerName ?? `PRD-${featureId.slice(0, 8)}.pdf`);
 
       const bytes = Buffer.from(await res.arrayBuffer());
       writeFileSync(file, bytes);
@@ -123,6 +139,7 @@ export function registerPrdCommands(program: Command, getRuntime: () => Runtime)
       });
 
       if (rt.json) return printJson(result);
-      success(`PRD sent to ${result.sent} recipient(s)${result.failed ? ` · ${result.failed} failed` : ""}.`);
+      const failedSuffix = result.failed ? " · " + result.failed + " failed" : "";
+      success(`PRD sent to ${result.sent} recipient(s)${failedSuffix}.`);
     });
 }

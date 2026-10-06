@@ -1,5 +1,7 @@
 import pc from "picocolors";
 
+import { isAbsolute, relative, resolve } from "node:path";
+
 /** A user-facing error: its message is printed cleanly, no stack trace. */
 export class CliError extends Error {}
 
@@ -8,15 +10,18 @@ export function printJson(data: unknown): void {
 }
 
 export function success(message: string): void {
-  console.log(pc.green(`✔ ${message}`));
+  console.log(pc.green(`✔ ${message.replace(/[\r\n]/g, "")}`));
 }
 
 export function info(message: string): void {
-  console.log(message);
+  const lines = message.split(/\r?\n/);
+  for (const line of lines) {
+    console.log(line.replace(/[\r\n]/g, ""));
+  }
 }
 
 export function dim(message: string): void {
-  console.log(pc.dim(message));
+  console.log(pc.dim(message.replace(/[\r\n]/g, "")));
 }
 
 /** Print an error (respecting --json) and exit non-zero. */
@@ -49,10 +54,28 @@ export function colorStatus(status: string | null | undefined): string {
 }
 
 // Matches ANSI SGR color sequences (ESC [ ... m) so width math ignores them.
-const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+const ANSI = new RegExp(String.raw`${String.fromCodePoint(27)}\[[0-9;]*m`, "g");
 
 export function stripAnsi(value: string): string {
   return value.replace(ANSI, "");
+}
+
+/**
+ * Resolves a destination file path while preventing path traversal vulnerabilities (CWE-22).
+ * Ensures that the resolved path stays within the base directory (defaults to current working directory).
+ */
+export function safeResolvePath(userPath: string, baseDir: string = process.cwd()): string {
+  if (userPath.includes("\0")) {
+    throw new CliError("File path must not contain null bytes.");
+  }
+  const resolvedBase = resolve(baseDir);
+  const resolvedTarget = resolve(resolvedBase, userPath);
+  const rel = relative(resolvedBase, resolvedTarget);
+
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    throw new CliError("Path traversal detected: file destination must stay within the current working directory.");
+  }
+  return resolvedTarget;
 }
 
 /** Render a left-aligned text table from rows of strings. */
