@@ -6,21 +6,10 @@ import {
   prds,
   usersTable,
 } from "@repo/database/schema";
-import { prdDocumentFilename, type PrdDocumentData } from "@repo/services/shipflow/prd-document";
+import { buildPrdDocumentData, prdDocumentFilename } from "@repo/services/shipflow/prd-document";
 
 import { auth } from "@/lib/auth";
 import { renderPrdPdf } from "@/lib/prd-pdf";
-
-function safeParseArray(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 
 export const dynamic = "force-dynamic";
 
@@ -72,28 +61,12 @@ export async function GET(
     .from(organizations)
     .where(eq(organizations.id, organizationId));
 
-  const document: PrdDocumentData = {
-    featureTitle: feature.title,
-    priority: feature.priority,
-    status: feature.status,
-    version: prd.version,
-    problem: prd.problem,
-    goals: safeParseArray(prd.goals),
-    nonGoals: safeParseArray(prd.nonGoals),
-    userStories: safeParseArray(prd.userStories),
-    acceptanceCriteria: safeParseArray(prd.acceptanceCriteria),
-    edgeCases: safeParseArray(prd.edgeCases),
-    successMetrics: safeParseArray(prd.successMetrics),
-    technicalRequirements: safeParseArray(prd.technicalRequirements),
-    dependencies: safeParseArray(prd.dependencies),
-    risks: safeParseArray(prd.risks),
-    estimatedTotalHours: prd.estimatedTotalHours,
-    targetDeadline: prd.targetDeadline,
-    approvedAt: prd.approvedAt,
-    createdByName: creator?.name ?? null,
-    createdAt: feature.createdAt,
-    orgName: org?.name ?? null,
-  };
+  const document = buildPrdDocumentData({
+    feature,
+    prd,
+    createdByName: creator?.name,
+    orgName: org?.name,
+  });
 
   const pdf = await renderPrdPdf(document);
   const filename = prdDocumentFilename(feature.title);

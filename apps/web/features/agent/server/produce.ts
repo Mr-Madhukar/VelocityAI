@@ -1,6 +1,11 @@
 import "server-only";
 
 import { appendText, finalizeSegment, type RunStatus } from "./run-store";
+import {
+  ERROR_SENTINEL,
+  PAUSE_SENTINEL,
+  RUN_ID_HEADER,
+} from "../stream-protocol";
 
 // The Hobby wall is 300s. Stop generating well before it so there's room to
 // flush the last Redis write and close the response cleanly.
@@ -12,6 +17,29 @@ export const SEGMENT_BUDGET_MS = 270_000;
 const REDIS_FLUSH_MS = 750;
 
 export type ProduceResult = { status: Exclude<RunStatus, "running">; error?: string };
+
+export function createStreamSender(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+): (text: string) => void {
+  return (text: string) => {
+    try {
+      controller.enqueue(encoder.encode(text));
+    } catch {
+      /* stream already cancelled */
+    }
+  };
+}
+
+export function closeControllerSafely(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+): void {
+  try {
+    controller.close();
+  } catch {
+    /* already closed by cancellation */
+  }
+}
 
 /**
  * Drive one producer segment: relay `textStream` to the client via `onDelta`
@@ -83,4 +111,49 @@ export async function produceSegment(opts: {
   const status: Exclude<RunStatus, "running"> = paused ? "paused" : "done";
   await finalizeSegment(runId, status);
   return { status };
+}
+
+export function createSegmentStreamResponse(opts: {
+  runId: string;
+  textStream: AsyncIterable<string>;
+  startedAt: number;
+  clientSignal: AbortSignal;
+  internalAbort: AbortController;
+  onDone?: () => void;
+}): Response {
+  const { runId, textStream, startedAt, clientSignal, internalAbort, onDone } = opts;
+  const encoder = new TextEncoder();
+
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = createStreamSender(controller, encoder);
+
+      const outcome = await produceSegment({
+        runId,
+        textStream,
+        startedAt,
+        clientSignal,
+        internalAbort,
+        onDelta: send,
+      });
+
+      if (outcome.status === "done") {
+        onDone?.();
+      } else if (outcome.status === "paused") {
+        if (!clientSignal.aborted) send(PAUSE_SENTINEL);
+      } else if (outcome.status === "error") {
+        if (!clientSignal.aborted) send(ERROR_SENTINEL + (outcome.error ?? "The agent run failed."));
+      }
+
+      closeControllerSafely(controller);
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      [RUN_ID_HEADER]: runId,
+    },
+  });
 }

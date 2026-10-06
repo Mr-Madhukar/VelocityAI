@@ -1,5 +1,5 @@
 import { continueAgentPlan } from "@/features/agent/server/engine";
-import { produceSegment } from "@/features/agent/server/produce";
+import { createSegmentStreamResponse } from "@/features/agent/server/produce";
 import {
   prepareAgentRun,
   rememberModel,
@@ -11,11 +11,7 @@ import {
   MAX_SEGMENTS,
   runStoreAvailable,
 } from "@/features/agent/server/run-store";
-import {
-  ERROR_SENTINEL,
-  PAUSE_SENTINEL,
-  RUN_ID_HEADER,
-} from "@/features/agent/stream-protocol";
+import { RUN_ID_HEADER } from "@/features/agent/stream-protocol";
 
 
 // Same 300s ceiling — a continuation is just another bounded producer segment.
@@ -76,48 +72,12 @@ export async function POST(req: Request) {
   const internalAbort = new AbortController();
   const providerSignal = AbortSignal.any([req.signal, internalAbort.signal]);
   const result = continueAgentPlan(deps.engineInput, run.text, providerSignal);
-  const encoder = new TextEncoder();
-
-  const body = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const send = (text: string) => {
-        try {
-          controller.enqueue(encoder.encode(text));
-        } catch {
-          /* stream already cancelled */
-        }
-      };
-
-      const outcome = await produceSegment({
-        runId: input.runId,
-        textStream: result.textStream,
-        startedAt,
-        clientSignal: req.signal,
-        internalAbort,
-        onDelta: send,
-      });
-
-      if (outcome.status === "done") {
-        rememberModel(deps.keyId, input.model);
-      } else if (outcome.status === "paused") {
-        if (!req.signal.aborted) send(PAUSE_SENTINEL);
-      } else if (outcome.status === "error") {
-        if (!req.signal.aborted) send(ERROR_SENTINEL + (outcome.error ?? "The agent run failed."));
-      }
-
-      try {
-        controller.close();
-      } catch {
-        /* already closed by cancellation */
-      }
-    },
-  });
-
-  return new Response(body, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store",
-      [RUN_ID_HEADER]: input.runId,
-    },
+  return createSegmentStreamResponse({
+    runId: input.runId,
+    textStream: result.textStream,
+    startedAt,
+    clientSignal: req.signal,
+    internalAbort,
+    onDone: () => rememberModel(deps.keyId, input.model),
   });
 }

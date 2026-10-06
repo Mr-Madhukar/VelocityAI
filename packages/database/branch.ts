@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { featureBranchRef, slugifyBranchName } from "@repo/services/shipflow/github";
 
-import { featureRequests, pullRequests, repositories } from "./schema";
+import { featureRequests, pullRequests, repositories, reviewCycles } from "./schema";
 import type { Database } from "./index";
 
 type FeatureForBranch = {
@@ -163,4 +163,36 @@ export async function resolveOrgIdForRepo(
     if (exact) return exact.organizationId;
   }
   return rows[0]!.organizationId;
+}
+
+/**
+ * Detaches any previous PR(s) and their review cycles from a feature,
+ * enforcing the one-active-PR-per-feature invariant.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function detachFeaturePrsAndCycles(
+  tx: any,
+  featureId: string,
+  keepPrId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  await tx
+    .update(pullRequests)
+    .set({ featureId: null, linkedHeadSha: null, linkedAt: null, updatedAt: now })
+    .where(
+      and(
+        eq(pullRequests.featureId, featureId),
+        ne(pullRequests.id, keepPrId),
+      ),
+    );
+
+  await tx
+    .update(reviewCycles)
+    .set({ featureId: null })
+    .where(
+      and(
+        eq(reviewCycles.featureId, featureId),
+        ne(reviewCycles.pullRequestId, keepPrId),
+      ),
+    );
 }

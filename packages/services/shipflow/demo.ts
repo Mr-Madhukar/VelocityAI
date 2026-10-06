@@ -262,53 +262,23 @@ const prds: DemoPrd[] = [
   },
 ];
 
-const tasks: DemoTask[] = [
-  {
-    id: "task_schema",
-    featureId: "feat_ai_qa",
-    title: "Add review cycle schema",
-    type: "database",
-    status: "done",
-    priority: "p0",
-    assignee: "Meera",
-  },
-  {
-    id: "task_prompt",
-    featureId: "feat_ai_qa",
-    title: "Write PRD-aware QA prompt",
-    type: "backend",
-    status: "done",
-    priority: "p0",
-    assignee: "Kaiser",
-  },
-  {
-    id: "task_webhook",
-    featureId: "feat_ai_qa",
-    title: "Process pull_request webhook",
-    type: "backend",
-    status: "in_progress",
-    priority: "p0",
-    assignee: "Aarav",
-  },
-  {
-    id: "task_review_ui",
-    featureId: "feat_ai_qa",
-    title: "Build review history panel",
-    type: "frontend",
-    status: "todo",
-    priority: "p1",
-    assignee: "Riya",
-  },
-  {
-    id: "task_billing_limits",
-    featureId: "feat_billing",
-    title: "Enforce AI credit limits",
-    type: "backend",
-    status: "blocked",
-    priority: "p0",
-    assignee: "Kaiser",
-  },
-];
+const tasks: DemoTask[] = (
+  [
+    ["task_schema", "feat_ai_qa", "Add review cycle schema", "database", "done", "p0", "Meera"],
+    ["task_prompt", "feat_ai_qa", "Write PRD-aware QA prompt", "backend", "done", "p0", "Kaiser"],
+    ["task_webhook", "feat_ai_qa", "Process pull_request webhook", "backend", "in_progress", "p0", "Aarav"],
+    ["task_review_ui", "feat_ai_qa", "Build review history panel", "frontend", "todo", "p1", "Riya"],
+    ["task_billing_limits", "feat_billing", "Enforce AI credit limits", "backend", "blocked", "p0", "Kaiser"],
+  ] as const
+).map(([id, featureId, title, type, status, priority, assignee]) => ({
+  id,
+  featureId,
+  title,
+  type,
+  status,
+  priority,
+  assignee,
+}));
 
 const reviews: DemoReview[] = [
   {

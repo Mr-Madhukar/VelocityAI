@@ -45,3 +45,68 @@ export function prdDocumentFilename(title: string): string {
   const slug = trimHyphens(trimHyphens(normalized).slice(0, 60)) || "product-requirements";
   return `PRD-${slug}.pdf`;
 }
+
+export function safeParseArray(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export interface BuildPrdDocumentInput {
+  feature: {
+    title: string;
+    priority: string;
+    status: string;
+    createdAt: string | Date;
+  };
+  prd: {
+    version: number;
+    problem: string;
+    goals?: string | null;
+    nonGoals?: string | null;
+    userStories?: string | null;
+    acceptanceCriteria?: string | null;
+    edgeCases?: string | null;
+    successMetrics?: string | null;
+    technicalRequirements?: string | null;
+    dependencies?: string | null;
+    risks?: string | null;
+    estimatedTotalHours?: number | null;
+    targetDeadline?: string | Date | null;
+    approvedAt?: string | Date | null;
+  };
+  createdByName?: string | null;
+  orgName?: string | null;
+  generatedAt?: string | Date;
+}
+
+export function buildPrdDocumentData(input: BuildPrdDocumentInput): PrdDocumentData {
+  const { feature, prd, createdByName = null, orgName = null, generatedAt } = input;
+  return {
+    featureTitle: feature.title,
+    priority: feature.priority,
+    status: feature.status,
+    version: prd.version,
+    problem: prd.problem,
+    goals: safeParseArray(prd.goals),
+    nonGoals: safeParseArray(prd.nonGoals),
+    userStories: safeParseArray(prd.userStories),
+    acceptanceCriteria: safeParseArray(prd.acceptanceCriteria),
+    edgeCases: safeParseArray(prd.edgeCases),
+    successMetrics: safeParseArray(prd.successMetrics),
+    technicalRequirements: safeParseArray(prd.technicalRequirements),
+    dependencies: safeParseArray(prd.dependencies),
+    risks: safeParseArray(prd.risks),
+    estimatedTotalHours: prd.estimatedTotalHours ?? null,
+    targetDeadline: prd.targetDeadline ?? null,
+    approvedAt: prd.approvedAt ?? null,
+    createdByName,
+    createdAt: feature.createdAt,
+    orgName,
+    ...(generatedAt ? { generatedAt } : {}),
+  };
+}

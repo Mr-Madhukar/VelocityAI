@@ -1,5 +1,9 @@
 import { streamAgentPlan } from "@/features/agent/server/engine";
-import { produceSegment } from "@/features/agent/server/produce";
+import {
+  closeControllerSafely,
+  createSegmentStreamResponse,
+  createStreamSender,
+} from "@/features/agent/server/produce";
 import {
   prepareAgentRun,
   rememberModel,
@@ -9,35 +13,12 @@ import {
 import { createRun, runStoreAvailable } from "@/features/agent/server/run-store";
 import {
   ERROR_SENTINEL,
-  PAUSE_SENTINEL,
-  RUN_ID_HEADER,
 } from "@/features/agent/stream-protocol";
 
 // The Hobby plan caps serverless maxDuration at 300s. Runs longer than that are
 // split into resumable segments (see features/agent/server/produce.ts) — each
 // invocation stays under this ceiling and the client continues the run.
 export const maxDuration = 300;
-
-function createStreamSender(
-  controller: ReadableStreamDefaultController<Uint8Array>,
-  encoder: TextEncoder,
-): (text: string) => void {
-  return (text: string) => {
-    try {
-      controller.enqueue(encoder.encode(text));
-    } catch {
-      /* stream already cancelled */
-    }
-  };
-}
-
-function closeControllerSafely(controller: ReadableStreamDefaultController<Uint8Array>): void {
-  try {
-    controller.close();
-  } catch {
-    /* already closed by cancellation */
-  }
-}
 
 /**
  * Starts an agent run and streams the plan JSON as raw text — a flat HTTP
@@ -80,40 +61,13 @@ export async function POST(req: Request) {
   // time budget.
   const providerSignal = AbortSignal.any([req.signal, internalAbort.signal]);
   const result = streamAgentPlan(deps.engineInput, providerSignal);
-  const encoder = new TextEncoder();
-
-  const body = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const send = createStreamSender(controller, encoder);
-
-      const outcome = await produceSegment({
-        runId,
-        textStream: result.textStream,
-        startedAt,
-        clientSignal: req.signal,
-        internalAbort,
-        onDelta: send,
-      });
-
-      if (outcome.status === "done") {
-        rememberModel(deps.keyId, input.model);
-      } else if (outcome.status === "paused") {
-        // Only signal a resumable pause to a client that's still listening.
-        if (!req.signal.aborted) send(PAUSE_SENTINEL);
-      } else if (outcome.status === "error") {
-        if (!req.signal.aborted) send(ERROR_SENTINEL + (outcome.error ?? "The agent run failed."));
-      }
-
-      closeControllerSafely(controller);
-    },
-  });
-
-  return new Response(body, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store",
-      [RUN_ID_HEADER]: runId,
-    },
+  return createSegmentStreamResponse({
+    runId,
+    textStream: result.textStream,
+    startedAt,
+    clientSignal: req.signal,
+    internalAbort,
+    onDone: () => rememberModel(deps.keyId, input.model),
   });
 }
 

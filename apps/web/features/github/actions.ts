@@ -341,6 +341,29 @@ interface RepoRowMeta {
   webhookId: string | null;
 }
 
+async function createRepoWebhook(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+) {
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://my-ai-code-reviewer.onrender.com"}/api/github/webhook`;
+  const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "velocityai-webhook-secret";
+  const { data: createdHook } = await octokit.rest.repos.createWebhook({
+    owner,
+    repo,
+    name: "web",
+    active: true,
+    events: ["pull_request", "pull_request_review", "push"],
+    config: {
+      url: webhookUrl,
+      content_type: "json",
+      secret: webhookSecret,
+      insecure_ssl: "0",
+    },
+  });
+  return createdHook;
+}
+
 async function ensureRepoWebhook(
   octokit: Octokit,
   owner: string,
@@ -351,21 +374,7 @@ async function ensureRepoWebhook(
   if (!activeRepoRow || activeRepoRow.webhookId || !repositoryId) return;
 
   try {
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://my-ai-code-reviewer.onrender.com"}/api/github/webhook`;
-    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "velocityai-webhook-secret";
-    const { data: createdHook } = await octokit.rest.repos.createWebhook({
-      owner,
-      repo,
-      name: "web",
-      active: true,
-      events: ["pull_request", "pull_request_review", "push"],
-      config: {
-        url: webhookUrl,
-        content_type: "json",
-        secret: webhookSecret,
-        insecure_ssl: "0",
-      },
-    });
+    const createdHook = await createRepoWebhook(octokit, owner, repo);
     if (createdHook?.id) {
       await db
         .update(repositories)
@@ -562,22 +571,7 @@ export async function setupRepoWebhookAction(
     const app = getGithubApp();
     const octokit = await app.getInstallationOctokit(installationId);
     const [owner, repo] = splitFullName(fullName);
-    const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://my-ai-code-reviewer.onrender.com"}/api/github/webhook`;
-    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || "velocityai-webhook-secret";
-
-    const { data: createdHook } = await octokit.rest.repos.createWebhook({
-      owner,
-      repo,
-      name: "web",
-      active: true,
-      events: ["pull_request", "pull_request_review", "push"],
-      config: {
-        url: webhookUrl,
-        content_type: "json",
-        secret: webhookSecret,
-        insecure_ssl: "0",
-      },
-    });
+    const createdHook = await createRepoWebhook(octokit, owner, repo);
 
     if (createdHook?.id) {
       await db

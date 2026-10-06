@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, isNotNull, isNull, ne } from "@repo/database";
+import { and, desc, eq, isNotNull, isNull } from "@repo/database";
 import {
   featureRequests,
   pullRequests,
@@ -7,6 +7,7 @@ import {
   reviewCycles,
   reviewIssues,
 } from "@repo/database/schema";
+import { detachFeaturePrsAndCycles } from "@repo/database/branch";
 
 import type { Context } from "../../context";
 import { orgProcedure, router } from "../../trpc";
@@ -189,24 +190,7 @@ export const reviewRouter = router({
       const now = new Date();
       await ctx.db.transaction(async (tx) => {
         // Detach the feature's previous PR(s) and their cycles — one active PR.
-        await tx
-          .update(pullRequests)
-          .set({ featureId: null, linkedHeadSha: null, linkedAt: null, updatedAt: now })
-          .where(
-            and(
-              eq(pullRequests.featureId, input.featureId),
-              ne(pullRequests.id, row.pullRequestId),
-            ),
-          );
-        await tx
-          .update(reviewCycles)
-          .set({ featureId: null })
-          .where(
-            and(
-              eq(reviewCycles.featureId, input.featureId),
-              ne(reviewCycles.pullRequestId, row.pullRequestId),
-            ),
-          );
+        await detachFeaturePrsAndCycles(tx, input.featureId, row.pullRequestId, now);
 
         // Attach the chosen cycle and re-point its PR so subsequent commits
         // link automatically.

@@ -34,6 +34,79 @@ const featureStatusSchema = z.enum([
   "blocked",
 ]);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function transitionFeatureStatus(
+  db: any,
+  opts: {
+    featureId: string;
+    organizationId: string;
+    fromStatus: typeof featureRequests.$inferSelect.status;
+    toStatus: typeof featureRequests.$inferSelect.status;
+  },
+) {
+  return db
+    .update(featureRequests)
+    .set({ status: opts.toStatus, updatedAt: new Date() })
+    .where(
+      and(
+        eq(featureRequests.id, opts.featureId),
+        eq(featureRequests.organizationId, opts.organizationId),
+        eq(featureRequests.status, opts.fromStatus),
+      ),
+    );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function prepareGenerationTrigger(
+  ctx: any,
+  opts: {
+    featureId: string;
+    rateLimitKey: string;
+    rateLimitMsg: string;
+    blockingStatus: typeof featureRequests.$inferSelect.status;
+    conflictMsg: string;
+    targetStatus: typeof featureRequests.$inferSelect.status;
+  },
+) {
+  enforceRateLimit({
+    key: opts.rateLimitKey,
+    limit: 5,
+    windowMs: 60_000,
+    message: opts.rateLimitMsg,
+  });
+
+  const [feature] = await ctx.db
+    .select({ status: featureRequests.status })
+    .from(featureRequests)
+    .where(
+      and(
+        eq(featureRequests.id, opts.featureId),
+        eq(featureRequests.organizationId, ctx.org.id),
+      ),
+    );
+
+  if (!feature) throw new TRPCError({ code: "NOT_FOUND" });
+
+  if (feature.status === opts.blockingStatus) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: opts.conflictMsg,
+    });
+  }
+
+  await ctx.db
+    .update(featureRequests)
+    .set({ status: opts.targetStatus, updatedAt: new Date() })
+    .where(
+      and(
+        eq(featureRequests.id, opts.featureId),
+        eq(featureRequests.organizationId, ctx.org.id),
+      ),
+    );
+
+  return feature;
+}
+
 export const featureRouter = router({
   create: orgProcedure
     .input(
@@ -380,16 +453,12 @@ export const featureRouter = router({
   cancelTaskGeneration: orgProcedure
     .input(z.object({ featureId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db
-        .update(featureRequests)
-        .set({ status: "prd_ready", updatedAt: new Date() })
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-            eq(featureRequests.status, "in_progress"),
-          ),
-        );
+      await transitionFeatureStatus(ctx.db, {
+        featureId: input.featureId,
+        organizationId: ctx.org.id,
+        fromStatus: "in_progress",
+        toStatus: "prd_ready",
+      });
       return { cancelled: true };
     }),
 
@@ -397,16 +466,12 @@ export const featureRouter = router({
     .input(z.object({ featureId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Revert status to clarifying so the Inngest save-prd step will abort on its status check
-      await ctx.db
-        .update(featureRequests)
-        .set({ status: "clarifying", updatedAt: new Date() })
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-            eq(featureRequests.status, "prd_generating"),
-          ),
-        );
+      await transitionFeatureStatus(ctx.db, {
+        featureId: input.featureId,
+        organizationId: ctx.org.id,
+        fromStatus: "prd_generating",
+        toStatus: "clarifying",
+      });
       return { cancelled: true };
     }),
 
@@ -414,34 +479,6 @@ export const featureRouter = router({
   triggerPrdGeneration: orgProcedure
     .input(z.object({ featureId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Bill/abuse guard: cap how often a single user can kick off PRD generation.
-      enforceRateLimit({
-        key: `prd-generate:${ctx.session.user.id}`,
-        limit: 5,
-        windowMs: 60_000,
-        message: "You're generating PRDs too quickly — please wait a moment.",
-      });
-
-      const [feature] = await ctx.db
-        .select({ status: featureRequests.status })
-        .from(featureRequests)
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-          ),
-        );
-
-      if (!feature) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Don't let a second generation start while one is already running.
-      if (feature.status === "prd_generating") {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "A PRD is already being generated for this feature.",
-        });
-      }
-
       // A PRD already exists → this is an explicit regeneration (new version).
       // Approved PRDs are locked, exactly like manual editing.
       const [existingPrd] = await ctx.db
@@ -456,15 +493,14 @@ export const featureRouter = router({
         });
       }
 
-      await ctx.db
-        .update(featureRequests)
-        .set({ status: "prd_generating", updatedAt: new Date() })
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-          ),
-        );
+      await prepareGenerationTrigger(ctx, {
+        featureId: input.featureId,
+        rateLimitKey: `prd-generate:${ctx.session.user.id}`,
+        rateLimitMsg: "You're generating PRDs too quickly — please wait a moment.",
+        blockingStatus: "prd_generating",
+        conflictMsg: "A PRD is already being generated for this feature.",
+        targetStatus: "prd_generating",
+      });
 
       await ctx.emit({
         name: "feature/clarification-complete",
@@ -481,42 +517,14 @@ export const featureRouter = router({
       specialtyOverrides: z.record(z.string(), z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      enforceRateLimit({
-        key: `task-generate:${ctx.session.user.id}`,
-        limit: 5,
-        windowMs: 60_000,
-        message: "You're generating tasks too quickly — please wait a moment.",
+      await prepareGenerationTrigger(ctx, {
+        featureId: input.featureId,
+        rateLimitKey: `task-generate:${ctx.session.user.id}`,
+        rateLimitMsg: "You're generating tasks too quickly — please wait a moment.",
+        blockingStatus: "in_progress",
+        conflictMsg: "Engineering tasks are already being generated for this feature.",
+        targetStatus: "in_progress",
       });
-
-      const [feature] = await ctx.db
-        .select({ status: featureRequests.status })
-        .from(featureRequests)
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-          ),
-        );
-
-      if (!feature) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Block re-triggering while task generation is already running.
-      if (feature.status === "in_progress") {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Engineering tasks are already being generated for this feature.",
-        });
-      }
-
-      await ctx.db
-        .update(featureRequests)
-        .set({ status: "in_progress", updatedAt: new Date() })
-        .where(
-          and(
-            eq(featureRequests.id, input.featureId),
-            eq(featureRequests.organizationId, ctx.org.id),
-          ),
-        );
 
       await ctx.emit({
         name: "prd/approved",

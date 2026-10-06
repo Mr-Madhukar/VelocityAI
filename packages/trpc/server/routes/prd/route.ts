@@ -1,22 +1,12 @@
 import { and, eq, inArray } from "@repo/database";
 import { featureRequests, members, organizations, prds, usersTable } from "@repo/database/schema";
-import type { PrdDocumentData } from "@repo/services/shipflow/prd-document";
+import { buildPrdDocumentData, safeParseArray } from "@repo/services/shipflow/prd-document";
 
 import { TRPCError } from "@trpc/server";
 
 import { managerProcedure, orgProcedure, router } from "../../trpc";
 import { z } from "../../schema";
 import { enforceRateLimit } from "../../rate-limit";
-
-function safeParseArray(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 function parsePrd(record: typeof prds.$inferSelect) {
   return {
@@ -272,28 +262,12 @@ export const prdRouter = router({
         });
       }
 
-      const document: PrdDocumentData = {
-        featureTitle: feature.title,
-        priority: feature.priority,
-        status: feature.status,
-        version: prd.version,
-        problem: prd.problem,
-        goals: safeParseArray(prd.goals),
-        nonGoals: safeParseArray(prd.nonGoals),
-        userStories: safeParseArray(prd.userStories),
-        acceptanceCriteria: safeParseArray(prd.acceptanceCriteria),
-        edgeCases: safeParseArray(prd.edgeCases),
-        successMetrics: safeParseArray(prd.successMetrics),
-        technicalRequirements: safeParseArray(prd.technicalRequirements),
-        dependencies: safeParseArray(prd.dependencies),
-        risks: safeParseArray(prd.risks),
-        estimatedTotalHours: prd.estimatedTotalHours,
-        targetDeadline: prd.targetDeadline,
-        approvedAt: prd.approvedAt,
-        createdByName: creator?.name ?? null,
-        createdAt: feature.createdAt,
-        orgName: org?.name ?? null,
-      };
+      const document = buildPrdDocumentData({
+        feature,
+        prd,
+        createdByName: creator?.name,
+        orgName: org?.name,
+      });
 
       const sharedByName = ctx.session.user.name ?? ctx.session.user.email ?? "A teammate";
 

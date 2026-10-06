@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, inArray, isNull, ne } from "@repo/database";
+import { and, count, desc, eq, inArray, isNull } from "@repo/database";
 import {
   featureRequests,
   githubInstallations,
@@ -10,6 +10,7 @@ import {
 } from "@repo/database/schema";
 
 import { getPlanDetails, type BillingPlan } from "@repo/services/shipflow/billing";
+import { detachFeaturePrsAndCycles } from "@repo/database/branch";
 
 import { orgProcedure, protectedProcedure, router } from "../../trpc";
 import { z } from "../../schema";
@@ -235,27 +236,7 @@ export const githubRouter = router({
         // Detach the feature's previous PR(s) so this one becomes the only
         // linked PR. Clearing the link stamps also keeps the auto-link guard
         // from re-linking them on their next push/sync.
-        await tx
-          .update(pullRequests)
-          .set({ featureId: null, linkedHeadSha: null, linkedAt: null, updatedAt: now })
-          .where(
-            and(
-              eq(pullRequests.featureId, input.featureId),
-              ne(pullRequests.id, input.pullRequestId),
-            ),
-          );
-
-        // Their review history leaves the feature (still visible on the global
-        // Reviews page as unlinked cycles).
-        await tx
-          .update(reviewCycles)
-          .set({ featureId: null })
-          .where(
-            and(
-              eq(reviewCycles.featureId, input.featureId),
-              ne(reviewCycles.pullRequestId, input.pullRequestId),
-            ),
-          );
+        await detachFeaturePrsAndCycles(tx, input.featureId, input.pullRequestId, now);
 
         // This PR's pre-link cycles are not carried either — detach them from
         // whatever feature they pointed at (e.g. a feature it was linked to
@@ -326,7 +307,7 @@ export const githubRouter = router({
         .select({ installationId: githubInstallations.installationId })
         .from(githubInstallations)
         .where(eq(githubInstallations.userId, ctx.session.user.id));
-      if (!saved || saved.installationId !== input.installationId) {
+      if (saved?.installationId !== input.installationId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Connect your GitHub installation first.",
