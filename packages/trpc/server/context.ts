@@ -1,7 +1,7 @@
 import { db, type Database } from "@repo/database";
 import type { PrdDocumentData } from "@repo/services/shipflow/prd-document";
 
-import type { OrgEvent, PublishOrgEvent } from "./events";
+import type { PublishOrgEvent } from "./events";
 
 export type AuthSession = {
   session: {
@@ -202,8 +202,7 @@ export function createContext(
     sendPrdShare: options.sendPrdShare ?? noopSendPrdShare,
     sendVerificationCode: options.sendVerificationCode ?? noopSendVerificationCode,
     publish: options.publish ?? noopPublish,
-  };
+  });
 }
 
-export type Context = ContextValue;
-export type { OrgEvent };
+export type { OrgEvent } from "./events";

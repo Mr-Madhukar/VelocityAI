@@ -11,7 +11,7 @@ import {
   tasks,
 } from "@repo/database/schema";
 
-import type { Context } from "../../context";
+import type { ContextValue } from "../../context";
 import { orgProcedure, router } from "../../trpc";
 import { z } from "../../schema";
 import { enforceRateLimit } from "../../rate-limit";
@@ -19,7 +19,7 @@ import { computeChatQuota } from "../../usage";
 
 // Assemble a compact, bounded snapshot of the org's workspace for the model to
 // ground its answers in. Deliberately name-based (no raw IDs) and length-capped.
-async function buildAssistantContext(ctx: Context, orgId: string): Promise<string> {
+async function buildAssistantContext(ctx: ContextValue, orgId: string): Promise<string> {
   const [org] = await ctx.db
     .select({ name: organizations.name })
     .from(organizations)
@@ -100,7 +100,7 @@ async function buildAssistantContext(ctx: Context, orgId: string): Promise<strin
 }
 
 // Load a conversation scoped to the caller (their own, in the active org).
-async function loadOwnConversation(ctx: Context, id: string, orgId: string, userId: string) {
+async function loadOwnConversation(ctx: ContextValue, id: string, orgId: string, userId: string) {
   const [conv] = await ctx.db
     .select()
     .from(aiConversations)

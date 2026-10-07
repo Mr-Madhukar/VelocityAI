@@ -10,7 +10,7 @@ import {
   tasks,
 } from "@repo/database/schema";
 
-import type { Context } from "../../context";
+import type { ContextValue } from "../../context";
 import { orgProcedure, router } from "../../trpc";
 import { z } from "../../schema";
 import { enforceRateLimit } from "../../rate-limit";
@@ -35,7 +35,7 @@ function safeParse<T>(raw: string | null | undefined, fallback: T): T {
 // Sorted list of a feature's current task ids — the staleness fingerprint. Drag/
 // status changes never touch the set, so board activity never marks prompts
 // stale; adding or removing a task does.
-async function taskIdFingerprint(ctx: Context, featureId: string): Promise<string[]> {
+async function taskIdFingerprint(ctx: ContextValue, featureId: string): Promise<string[]> {
   const rows = await ctx.db
     .select({ id: tasks.id })
     .from(tasks)
@@ -44,7 +44,7 @@ async function taskIdFingerprint(ctx: Context, featureId: string): Promise<strin
 }
 
 // Load the feature scoped to the caller's active org (also authorizes access).
-async function loadFeatureInOrg(ctx: Context, featureId: string, orgId: string) {
+async function loadFeatureInOrg(ctx: ContextValue, featureId: string, orgId: string) {
   const [feature] = await ctx.db
     .select()
     .from(featureRequests)
@@ -84,7 +84,7 @@ type GetByFeatureResult = {
 // (optional) selected stack. Shared by getByFeature and generate so both return
 // the exact same shape.
 async function buildResult(
-  ctx: Context,
+  ctx: ContextValue,
   feature: typeof featureRequests.$inferSelect,
   selectedStack: string | undefined,
 ): Promise<GetByFeatureResult> {
@@ -272,7 +272,7 @@ export const promptsRouter = router({
         techStack: displayStack,
       });
 
-      const fingerprint = featureTasks.map((t) => t.id).sort();
+      const fingerprint = featureTasks.map((t) => t.id).sort((a, b) => a.localeCompare(b));
       const now = new Date();
 
       // Upsert on the (featureId, techStack) unique index: switching back to a

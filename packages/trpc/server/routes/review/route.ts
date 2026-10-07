@@ -14,12 +14,12 @@ import {
   syncFeatureReviewVerdictInTx,
 } from "@repo/database/branch";
 
-import type { Context } from "../../context";
+import type { ContextValue } from "../../context";
 import { orgProcedure, router } from "../../trpc";
 import { z } from "../../schema";
 
 async function attachIssues(
-  ctx: Context,
+  ctx: ContextValue,
   cycle: typeof reviewCycles.$inferSelect,
 ) {
   const issues = await ctx.db

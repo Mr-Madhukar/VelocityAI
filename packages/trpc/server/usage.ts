@@ -7,12 +7,12 @@ import {
   type BillingPlan,
 } from "@repo/services/shipflow/billing";
 
-import type { Context } from "./context";
+import type { ContextValue } from "./context";
 
 const PROMPT_KIND = "prompt_generation";
 
 async function orgPlan(
-  ctx: Context,
+  ctx: ContextValue,
   orgId: string,
 ): Promise<{ plan: BillingPlan; currentPeriodEnd: Date | null }> {
   const [sub] = await ctx.db
@@ -40,7 +40,7 @@ export type PromptQuota = {
 };
 
 export async function computePromptQuota(
-  ctx: Context,
+  ctx: ContextValue,
   orgId: string,
   featureId: string,
 ): Promise<PromptQuota> {
@@ -89,7 +89,7 @@ export async function computePromptQuota(
 }
 
 export async function logPromptGeneration(
-  ctx: Context,
+  ctx: ContextValue,
   orgId: string,
   userId: string,
   featureId: string,
@@ -112,7 +112,7 @@ export type ChatQuota = {
   reason: string | null;
 };
 
-export async function computeChatQuota(ctx: Context, orgId: string): Promise<ChatQuota> {
+export async function computeChatQuota(ctx: ContextValue, orgId: string): Promise<ChatQuota> {
   const { plan, currentPeriodEnd } = await orgPlan(ctx, orgId);
   const details = getPlanDetails(plan);
   const limit = details.chatConversationLimit;

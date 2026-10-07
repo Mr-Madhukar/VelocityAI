@@ -2,13 +2,13 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "@repo/database";
 import { featureRequests, taskNotes, tasks, usersTable } from "@repo/database/schema";
 
-import type { Context } from "../../context";
+import type { ContextValue } from "../../context";
 import { orgProcedure, router } from "../../trpc";
 import { z } from "../../schema";
 
 // Guard: the task exists AND belongs to the caller's active org (tasks are
 // org-scoped through their feature). Throws NOT_FOUND otherwise.
-async function assertTaskInOrg(ctx: Context, taskId: string, orgId: string) {
+async function assertTaskInOrg(ctx: ContextValue, taskId: string, orgId: string) {
   const [row] = await ctx.db
     .select({ id: tasks.id })
     .from(tasks)
@@ -19,7 +19,7 @@ async function assertTaskInOrg(ctx: Context, taskId: string, orgId: string) {
   }
 }
 
-async function listGroupedTasks(ctx: Context, featureId: string) {
+async function listGroupedTasks(ctx: ContextValue, featureId: string) {
   const all = await ctx.db
     .select()
     .from(tasks)
